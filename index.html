@@ -1,51 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="description" content="" />
-        <meta name="author" content="" />
-        <title>Amar Bartaula  Website</title>
-        <!-- Favicon-->
-        <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-        <!-- Font Awesome icons (free version)-->
-        <script src="https://use.fontawesome.com/releases/v5.15.3/js/all.js" crossorigin="anonymous"></script>
-        <!-- Google fonts-->
-        <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
-        <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" />
-        <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet" type="text/css" />
-        <!-- Core theme CSS (includes Bootstrap)-->
-        <link href="css/styles.css" rel="stylesheet" />
-    </head>
-    <body id="page-top">
-        <!-- Masthead-->
-        <header class="masthead bg-primary text-white text-center">
-            <div class="container d-flex align-items-center flex-column">
-                <!-- Masthead Avatar Image-->
-                <img class="masthead-avatar mb-5" src="brp.jpg" alt="..." />
-                <!-- Masthead Heading-->
-                <h1 class="masthead-heading text-uppercase mb-0">Amar Bartaula</h1>
-                <!-- Masthead Subheading-->
-                <p class="masthead-subheading font-weight-light mb-0">   </p>
-                <nav>
-                    <a href="http://youtube.com"><i class="fab fa-youtube"></i></a>
-                    <a href="http://facebook.com/lbartaula"><i class="fab fa-facebook-f"></i></a>
-                    <a href="http://github.com/lbartaula"><i class="fab fa-github"></i></a>
-                </nav>
-              
-               
-            </div>
-        </header>
-        <!-- Copyright Section-->
-        <div class="copyright py-4 text-center text-white">
-            <div class="container"><small>Copyright &copy; 2021 Amar Bartaula</small></div>
-        </div>
-        <!-- Bootstrap core JS-->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
-        <!-- Core theme JS-->
-        <script src="js/scripts.js"></script>
-        <script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
-    </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEBS Accounting System</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f9;color:#1f2937}
+:root{--primary:#173f8a;--dark:#102a5c;--light:#eef4ff;--border:#d9e0ea;--green:#16834b;--red:#c53b3b}
+.app{display:flex;min-height:100vh}.sidebar{width:245px;background:var(--dark);color:white;padding:20px 14px;position:fixed;left:0;top:0;bottom:0;overflow:auto}
+.logo{font-size:20px;font-weight:700;padding:10px 8px 22px}.logo small{display:block;font-size:11px;font-weight:400;opacity:.75;margin-top:5px}
+.nav button{width:100%;border:0;background:transparent;color:#dbe7ff;text-align:left;padding:12px 14px;border-radius:8px;margin:3px 0;cursor:pointer;font-size:14px}.nav button:hover,.nav button.active{background:#2455a4;color:#fff}
+.main{margin-left:245px;width:calc(100% - 245px)}header{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 25px;position:sticky;top:0;z-index:5}
+header h2{margin:0;font-size:20px}.container{padding:24px}.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 8px #00000008}.card .label{font-size:13px;color:#64748b}.card .value{font-size:25px;font-weight:700;margin-top:8px}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--primary)}
+.panel{background:#fff;border:1px solid var(--border);border-radius:12px;margin-top:20px;padding:20px}.panel h3{margin:0 0 16px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:7px;font-size:14px;background:white}.field textarea{min-height:80px;resize:vertical}
+.btn{border:0;border-radius:7px;padding:10px 16px;cursor:pointer;font-weight:600}.primary{background:var(--primary);color:#fff}.secondary{background:#e8edf5;color:#23324d}.danger{background:#ffe8e8;color:#a51f1f}.success{background:#e2f7eb;color:#08753e}.actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f8fafc;color:#475569}td.amount{text-align:right;font-weight:600}.table-wrap{overflow:auto}
+.toolbar{display:flex;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}.toolbar input{padding:9px;border:1px solid #cbd5e1;border-radius:7px}
+.badge{padding:4px 8px;border-radius:20px;font-size:11px;font-weight:700}.income{background:#e5f7ec;color:#08753e}.expense{background:#ffe8e8;color:#a51f1f}
+.notice{background:var(--light);padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:15px}
+.login{position:fixed;inset:0;background:#edf2f8;display:flex;align-items:center;justify-content:center;z-index:20}.login-box{background:#fff;width:min(400px,92%);padding:30px;border-radius:14px;box-shadow:0 10px 40px #0002}.login-box h1{margin-top:0;color:var(--primary)}.login-box .field{margin-bottom:14px}
+.user{font-size:13px;color:#64748b}.empty{text-align:center;padding:30px;color:#64748b}.print-only{display:none}
+@media(max-width:900px){.sidebar{width:200px}.main{margin-left:200px;width:calc(100% - 200px)}.cards{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.sidebar{position:fixed;width:100%;height:auto;bottom:auto;display:flex;overflow-x:auto;padding:8px}.logo{display:none}.nav{display:flex;gap:4px}.nav button{white-space:nowrap;width:auto}.main{margin-left:0;margin-top:58px;width:100%}.cards,.grid2,.form-grid{grid-template-columns:1fr}.container{padding:14px}header{padding:0 14px}}
+@media print{.sidebar,header,.no-print{display:none!important}.main{margin:0;width:100%}.page{display:none!important}.page.active{display:block!important}.print-only{display:block}.panel{border:0}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+
+<div id="login" class="login">
+  <div class="login-box">
+    <h1>UEBS Accounts</h1>
+    <p>United English Boarding School, Manahari</p>
+    <div class="field"><label>Username</label><input id="loginUser" value="admin"></div>
+    <div class="field"><label>Password</label><input id="loginPass" type="password" value="admin123"></div>
+    <button class="btn primary" style="width:100%" onclick="login()">Login</button>
+    <p style="font-size:12px;color:#64748b">Demo login: admin / admin123</p>
+  </div>
+</div>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">UEBS ACCOUNTING<small>United English Boarding School</small></div>
+  <div class="nav">
+    <button class="active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+    <button onclick="showPage('income',this)">💰 Income</button>
+    <button onclick="showPage('expense',this)">💸 Expenses</button>
+    <button onclick="showPage('fees',this)">🎓 Student Fees</button>
+    <button onclick="showPage('ledger',this)">📒 Ledger</button>
+    <button onclick="showPage('reports',this)">📈 Reports</button>
+    <button onclick="showPage('settings',this)">⚙️ Settings</button>
+    <button onclick="logout()">🚪 Logout</button>
+  </div>
+</aside>
+
+<main class="main">
+<header><h2 id="pageTitle">Dashboard</h2><span class="user">Administrator</span></header>
+<div class="container">
+
+<section id="dashboard" class="page active">
+  <div class="notice">This version stores data in your browser using LocalStorage. It is ready for GitHub Pages. A cloud database can be connected later.</div>
+  <div class="cards">
+    <div class="card"><div class="label">Total Income</div><div class="value green" id="totalIncome">Rs. 0.00</div></div>
+    <div class="card"><div class="label">Total Expenses</div><div class="value red" id="totalExpense">Rs. 0.00</div></div>
+    <div class="card"><div class="label">Net Balance</div><div class="value blue" id="netBalance">Rs. 0.00</div></div>
+    <div class="card"><div class="label">Transactions</div><div class="value" id="transactionCount">0</div></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>Recent Transactions</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody id="recentTable"></tbody></table></div></div>
+    <div class="panel"><h3>Quick Actions</h3><div class="actions">
+      <button class="btn primary" onclick="showPage('income')">+ Add Income</button>
+      <button class="btn danger" onclick="showPage('expense')">+ Add Expense</button>
+      <button class="btn secondary" onclick="showPage('fees')">+ Student Fee</button>
+      <button class="btn success" onclick="printReport()">Print Report</button>
+    </div></div>
+  </div>
+</section>
+
+<section id="income" class="page">
+<div class="panel">
+<h3>Record Income</h3>
+<form onsubmit="addTransaction(event,'Income')">
+<div class="form-grid">
+<div class="field"><label>Date</label><input type="date" id="incomeDate" required></div>
+<div class="field"><label>Income Head</label><select id="incomeHead"><option>Student Fee</option><option>Admission Fee</option><option>Transport Fee</option><option>Canteen Income</option><option>Other Income</option></select></div>
+<div class="field"><label>Amount (Rs.)</label><input type="number" id="incomeAmount" step="0.01" min="0" required></div>
+<div class="field"><label>Payment Method</label><select id="incomeMethod"><option>Cash</option><option>Bank</option><option>eSewa</option><option>Other</option></select></div>
+<div class="field"><label>Reference / Receipt No.</label><input id="incomeRef"></div>
+<div class="field"><label>Description</label><input id="incomeDesc"></div>
+</div><div class="actions"><button class="btn primary">Save Income</button><button type="reset" class="btn secondary">Clear</button></div>
+</form></div>
+</section>
+
+<section id="expense" class="page">
+<div class="panel">
+<h3>Record Expense</h3>
+<form onsubmit="addTransaction(event,'Expense')">
+<div class="form-grid">
+<div class="field"><label>Date</label><input type="date" id="expenseDate" required></div>
+<div class="field"><label>Expense Head</label><select id="expenseHead"><option>Salary</option><option>Stationery</option><option>Electricity</option><option>Transportation</option><option>Maintenance</option><option>Canteen</option><option>Bank Charges</option><option>Other Expense</option></select></div>
+<div class="field"><label>Amount (Rs.)</label><input type="number" id="expenseAmount" step="0.01" min="0" required></div>
+<div class="field"><label>Payment Method</label><select id="expenseMethod"><option>Cash</option><option>Bank</option><option>eSewa</option><option>Other</option></select></div>
+<div class="field"><label>Voucher No.</label><input id="expenseRef"></div>
+<div class="field"><label>Description</label><input id="expenseDesc"></div>
+</div><div class="actions"><button class="btn primary">Save Expense</button><button type="reset" class="btn secondary">Clear</button></div>
+</form></div>
+</section>
+
+<section id="fees" class="page">
+<div class="panel">
+<h3>Student Fee Collection</h3>
+<form onsubmit="addFee(event)">
+<div class="form-grid">
+<div class="field"><label>Date</label><input type="date" id="feeDate" required></div>
+<div class="field"><label>Student Name</label><input id="studentName" required></div>
+<div class="field"><label>Class</label><input id="studentClass" placeholder="e.g. 8"></div>
+<div class="field"><label>Fee Head</label><select id="feeHead"><option>Monthly Fee</option><option>Admission Fee</option><option>Annual Fee</option><option>Transport Fee</option><option>Exam Fee</option><option>Other Fee</option></select></div>
+<div class="field"><label>Amount (Rs.)</label><input type="number" id="feeAmount" step="0.01" min="0" required></div>
+<div class="field"><label>Receipt No.</label><input id="feeReceipt"></div>
+</div><div class="actions"><button class="btn primary">Save Fee & Generate Receipt</button></div>
+</form></div>
+<div class="panel"><h3>Fee Collections</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Head</th><th>Receipt</th><th>Amount</th></tr></thead><tbody id="feesTable"></tbody></table></div></div>
+</section>
+
+<section id="ledger" class="page">
+<div class="panel">
+<div class="toolbar"><h3>Transaction Ledger</h3><input id="search" placeholder="Search..." oninput="renderLedger()"></div>
+<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Head</th><th>Description</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody id="ledgerTable"></tbody></table></div>
+</div></section>
+
+<section id="reports" class="page">
+<div class="panel">
+<h3>Financial Report</h3>
+<div class="form-grid no-print"><div class="field"><label>From</label><input type="date" id="reportFrom"></div><div class="field"><label>To</label><input type="date" id="reportTo"></div><div class="field"><label>&nbsp;</label><button class="btn primary" onclick="renderReport()">Generate</button></div></div>
+<div id="reportArea">
+<div class="cards"><div class="card"><div class="label">Income</div><div class="value green" id="reportIncome">Rs. 0.00</div></div><div class="card"><div class="label">Expenses</div><div class="value red" id="reportExpense">Rs. 0.00</div></div><div class="card"><div class="label">Net Profit / (Loss)</div><div class="value blue" id="reportNet">Rs. 0.00</div></div></div>
+<div class="panel"><h3>Income by Head</h3><div id="incomeBreakdown"></div></div>
+<div class="panel"><h3>Expense by Head</h3><div id="expenseBreakdown"></div></div>
+</div>
+<div class="actions no-print"><button class="btn success" onclick="printReport()">Print / Save PDF</button><button class="btn secondary" onclick="exportCSV()">Export CSV</button></div>
+</div></section>
+
+<section id="settings" class="page">
+<div class="panel">
+<h3>Settings & Data Backup</h3>
+<p>All data is currently stored in this browser. Export a backup regularly.</p>
+<div class="actions"><button class="btn success" onclick="backup()">Download Backup</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Restore Backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(event)"><button class="btn danger" onclick="clearAll()">Delete All Data</button></div>
+</div>
+<div class="panel"><h3>School Information</h3><div class="form-grid"><div class="field"><label>School Name</label><input id="schoolName" value="United English Boarding School"></div><div class="field"><label>Address</label><input id="schoolAddress" value="Manahari, Makwanpur"></div><div class="field"><label>Fiscal Year</label><input id="fiscalYear" value="2083/84"></div></div><div class="actions"><button class="btn primary" onclick="saveSettings()">Save Settings</button></div></div>
+</section>
+
+</div></main></div>
+
+<script>
+const KEY='uebs_accounts_v1', FEEKEY='uebs_fees_v1', SETKEY='uebs_settings_v1';
+let transactions=JSON.parse(localStorage.getItem(KEY)||'[]');
+let fees=JSON.parse(localStorage.getItem(FEEKEY)||'[]');
+let settings=JSON.parse(localStorage.getItem(SETKEY)||'{"schoolName":"United English Boarding School","address":"Manahari, Makwanpur","fiscalYear":"2083/84"}');
+
+const money=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const today=()=>new Date().toISOString().slice(0,10);
+document.querySelectorAll('input[type=date]').forEach(x=>x.value=today());
+
+function login(){
+ const u=document.getElementById('loginUser').value,p=document.getElementById('loginPass').value;
+ if(u==='admin'&&p==='admin123'){document.getElementById('login').style.display='none';}
+ else alert('Invalid login. Demo: admin / admin123');
+}
+function logout(){document.getElementById('login').style.display='flex'}
+function save(){localStorage.setItem(KEY,JSON.stringify(transactions));localStorage.setItem(FEEKEY,JSON.stringify(fees));}
+function showPage(id,btn){
+ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');
+ const names={dashboard:'Dashboard',income:'Income Entry',expense:'Expense Entry',fees:'Student Fees',ledger:'Transaction Ledger',reports:'Financial Reports',settings:'Settings'};
+ document.getElementById('pageTitle').textContent=names[id]||id;
+ if(id==='dashboard')renderDashboard();if(id==='ledger')renderLedger();if(id==='fees')renderFees();if(id==='reports')renderReport();
+}
+function addTransaction(e,type){
+ e.preventDefault();
+ const pre=type==='Income'?'income':'expense';
+ const t={id:Date.now(),date:document.getElementById(pre+'Date').value,type,head:document.getElementById(pre+'Head').value,amount:+document.getElementById(pre+'Amount').value,method:document.getElementById(pre+'Method').value,ref:document.getElementById(pre+'Ref').value,description:document.getElementById(pre+'Desc').value};
+ transactions.unshift(t);save();e.target.reset();document.getElementById(pre+'Date').value=today();alert(type+' saved successfully.');showPage('dashboard');
+}
+function addFee(e){
+ e.preventDefault();
+ const f={id:Date.now(),date:feeDate.value,student:studentName.value,className:studentClass.value,head:feeHead.value,amount:+feeAmount.value,receipt:feeReceipt.value||('R-'+Date.now().toString().slice(-6))};
+ fees.unshift(f);transactions.unshift({id:Date.now()+1,date:f.date,type:'Income',head:f.head,amount:f.amount,method:'Cash',ref:f.receipt,description:'Fee: '+f.student+' / Class '+f.className});save();e.target.reset();feeDate.value=today();alert('Fee saved. Receipt No: '+f.receipt);renderFees();
+}
+function renderDashboard(){
+ let inc=transactions.filter(t=>t.type==='Income').reduce((a,t)=>a+t.amount,0),exp=transactions.filter(t=>t.type==='Expense').reduce((a,t)=>a+t.amount,0);
+ totalIncome.textContent=money(inc);totalExpense.textContent=money(exp);netBalance.textContent=money(inc-exp);transactionCount.textContent=transactions.length;
+ recentTable.innerHTML=transactions.slice(0,8).map(t=>`<tr><td>${t.date}</td><td>${esc(t.description||t.head)}</td><td><span class="badge ${t.type==='Income'?'income':'expense'}">${t.type}</span></td><td class="amount">${money(t.amount)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No transactions yet.</td></tr>';
+}
+function renderLedger(){
+ const q=(search.value||'').toLowerCase();let arr=transactions.filter(t=>Object.values(t).join(' ').toLowerCase().includes(q));
+ ledgerTable.innerHTML=arr.map(t=>`<tr><td>${t.date}</td><td><span class="badge ${t.type==='Income'?'income':'expense'}">${t.type}</span></td><td>${esc(t.head)}</td><td>${esc(t.description)}</td><td>${esc(t.method)}</td><td>${esc(t.ref)}</td><td class="amount">${money(t.amount)}</td><td><button class="btn danger" onclick="deleteTx(${t.id})">Delete</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">No transactions found.</td></tr>';
+}
+function deleteTx(id){if(confirm('Delete this transaction?')){transactions=transactions.filter(t=>t.id!==id);save();renderLedger();renderDashboard()}}
+function renderFees(){feesTable.innerHTML=fees.map(f=>`<tr><td>${f.date}</td><td>${esc(f.student)}</td><td>${esc(f.className)}</td><td>${esc(f.head)}</td><td>${esc(f.receipt)}</td><td class="amount">${money(f.amount)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">No fee collections yet.</td></tr>'}
+function renderReport(){
+ const from=reportFrom.value,to=reportTo.value;let arr=transactions.filter(t=>(!from||t.date>=from)&&(!to||t.date<=to));
+ const inc=arr.filter(t=>t.type==='Income').reduce((a,t)=>a+t.amount,0),exp=arr.filter(t=>t.type==='Expense').reduce((a,t)=>a+t.amount,0);
+ reportIncome.textContent=money(inc);reportExpense.textContent=money(exp);reportNet.textContent=money(inc-exp);
+ const group=(type)=>{let m={};arr.filter(t=>t.type===type).forEach(t=>m[t.head]=(m[t.head]||0)+t.amount);return Object.entries(m).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="amount">${money(v)}</td></tr>`).join('')||'<tr><td colspan="2" class="empty">No data</td></tr>'};
+ incomeBreakdown='<table><tr><th>Income Head</th><th>Amount</th></tr>'+group('Income')+'</table>';
+ expenseBreakdown='<table><tr><th>Expense Head</th><th>Amount</th></tr>'+group('Expense')+'</table>';
+}
+function printReport(){window.print()}
+function exportCSV(){
+ let rows=[['Date','Type','Head','Description','Method','Reference','Amount'],...transactions.map(t=>[t.date,t.type,t.head,t.description,t.method,t.ref,t.amount])];
+ let csv=rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\\n');download(new Blob([csv],{type:'text/csv'}),'uebs-transactions.csv');
+}
+function backup(){download(new Blob([JSON.stringify({transactions,fees,settings},null,2)],{type:'application/json'}),'uebs-accounting-backup.json')}
+function restore(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);transactions=d.transactions||[];fees=d.fees||[];settings=d.settings||settings;save();localStorage.setItem(SETKEY,JSON.stringify(settings));location.reload()}catch{alert('Invalid backup file')}};r.readAsText(f)}
+function clearAll(){if(confirm('This will permanently delete all local data. Continue?')){localStorage.removeItem(KEY);localStorage.removeItem(FEEKEY);location.reload()}}
+function saveSettings(){settings={schoolName:schoolName.value,address:schoolAddress.value,fiscalYear:fiscalYear.value};localStorage.setItem(SETKEY,JSON.stringify(settings));alert('Settings saved.')}
+function download(blob,name){let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+schoolName.value=settings.schoolName;schoolAddress.value=settings.address;fiscalYear.value=settings.fiscalYear;
+renderDashboard();renderFees();renderReport();
+</script>
+</body>
 </html>
