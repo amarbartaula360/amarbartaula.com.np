@@ -1,67 +1,104 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, FileText } from 'lucide-react';
+
+export default function Dashboard() {
+  const [stats] = useState({
+    totalSales: 'Rs. 1,45,000',
+    totalExpenses: 'Rs. 42,500',
+    cashBalance: 'Rs. 1,02,500',
+    nepaliDate: '२०८३-०६-२६'
+  });
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Top Navbar */}
+      <header className="bg-emerald-700 text-white p-4 shadow-md flex justify-between items-center px-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-wide">नेपाली लेखा प्रणाली</h1>
+          <p className="text-xs text-emerald-100">Advanced Accounting & Billing System</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
+        <div className="bg-emerald-800 px-4 py-2 rounded-lg text-sm font-semibold border border-emerald-600">
+          आजको मिति: <span className="text-amber-300 ml-1">{stats.nepaliDate} B.S.</span>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto p-6">
+        {/* Stats Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500 font-medium">कुल बिक्री (Total Sales)</p>
+              <h3 className="text-2xl font-bold text-slate-800 mt-1">{stats.totalSales}</h3>
+            </div>
+            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-lg">
+              <ArrowUpRight className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500 font-medium">कुल खर्च (Total Expenses)</p>
+              <h3 className="text-2xl font-bold text-slate-800 mt-1">{stats.totalExpenses}</h3>
+            </div>
+            <div className="p-3 bg-rose-100 text-rose-700 rounded-lg">
+              <ArrowDownLeft className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500 font-medium">नगद मोजदात (Cash Balance)</p>
+              <h3 className="text-2xl font-bold text-slate-800 mt-1">{stats.cashBalance}</h3>
+            </div>
+            <div className="p-3 bg-amber-100 text-amber-700 rounded-lg">
+              <Wallet className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Action Navigation */}
+        <div className="flex gap-4 mb-8">
+          <a href="/invoice" className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition">
+            <Plus className="w-5 h-5" /> नयाँ बिल काट्नुहोस् (Create Invoice)
           </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+          <a href="/journal" className="flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-5 py-2.5 rounded-lg font-medium shadow-sm transition">
+            <FileText className="w-5 h-5" /> Journal Entry हाल्नुहोस्
           </a>
+        </div>
+
+        {/* Recent Transactions Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h2 className="font-bold text-slate-800 text-lg">भर्खरैका कारोबारहरू (Recent Journal Entries)</h2>
+            <span className="text-xs bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-semibold">Live Data</span>
+          </div>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-100 text-slate-600 text-sm font-semibold">
+                <th className="p-4 border-b">मिति (B.S.)</th>
+                <th className="p-4 border-b">भौचर नं.</th>
+                <th className="p-4 border-b">विवरण (Narration)</th>
+                <th className="p-4 border-b text-right">रकम (Amount)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              <tr className="hover:bg-slate-50 transition">
+                <td className="p-4 font-medium text-slate-700">२०८३-०६-२६</td>
+                <td className="p-4 text-emerald-700 font-semibold">JV-2083-001</td>
+                <td className="p-4 text-slate-600">बैंक खातामा नगद जम्मा गरिएको</td>
+                <td className="p-4 text-right font-bold text-slate-800">Rs. ५,०००.००</td>
+              </tr>
+              <tr className="hover:bg-slate-50 transition">
+                <td className="p-4 font-medium text-slate-700">२०८३-०६-२५</td>
+                <td className="p-4 text-emerald-700 font-semibold">INV-2083-042</td>
+                <td className="p-4 text-slate-600">राम किराना पसललाई सामान बिक्री</td>
+                <td className="p-4 text-right font-bold text-slate-800">Rs. १२,४५०.००</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </main>
     </div>
