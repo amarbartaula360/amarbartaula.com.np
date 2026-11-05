@@ -50,7 +50,7 @@ export default function BhalaiKoshPage() {
             <button onClick={() => setMobileNav(!mobileNav)} className="rounded-lg border p-2 lg:hidden" aria-label="Menu">{mobileNav ? <X size={18}/> : <Menu size={18}/>}</button>
             <Link href="/#projects" className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900"><ArrowLeft size={16}/> Portfolio</Link>
             <span className="hidden h-6 w-px bg-slate-200 sm:block"/>
-            <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-emerald-700 text-white"><Landmark size={19}/></span><div><p className="text-sm font-extrabold leading-tight">भलाई कोष</p><p className="text-[10px] font-medium tracking-wide text-slate-500">WELFARE FUND MANAGEMENT</p></div></div>
+            <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-emerald-700 text-white"><Landmark size={19}/></span><div><p className="text-sm font-extrabold leading-tight">United Employee Benefit Fund</p><p className="text-[10px] font-medium tracking-wide text-slate-500">EMPLOYEE BENEFIT FUND MANAGEMENT</p></div></div>
           </div>
           <div className="flex items-center gap-2"><span className="hidden rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 sm:inline-flex">Demo Preview</span><button className="rounded-xl border border-slate-200 p-2 text-slate-500"><Bell size={17}/></button><div className="grid size-9 place-items-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">AD</div></div>
         </div>
