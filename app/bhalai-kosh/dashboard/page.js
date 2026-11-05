@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wallet, Users, Landmark, TrendingUp, Search, Plus, FileSpreadsheet, LayoutDashboard, HandCoins, BookOpen, BarChart3, Bell, Settings, Download, Upload, ChevronRight, Menu, X } from "lucide-react";
 
@@ -23,6 +24,14 @@ const navItems = [
 const money = (n) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
 
 export default function BhalaiKoshPage() {
+  const router = useRouter();
+  const [authReady, setAuthReady] = useState(false);
+  useEffect(() => {
+    fetch("/api/bhalai-kosh/auth/me").then(r => {
+      if (!r.ok) { router.replace("/bhalaikosh"); return null; }
+      return r.json();
+    }).then(data => { if (data?.authenticated) setAuthReady(true); }).catch(() => router.replace("/bhalaikosh"));
+  }, [router]);
   const [active, setActive] = useState("Overview");
   const [members, setMembers] = useState(initialMembers);
   const [query, setQuery] = useState("");
@@ -42,6 +51,7 @@ export default function BhalaiKoshPage() {
     setNotice("सदस्य demo सूचीमा थपियो। वास्तविक database मा सुरक्षित गरिएको छैन।");
   };
 
+  if (!authReady) return <main className="grid min-h-screen place-items-center bg-[#f4f6f3] text-sm font-semibold text-slate-500">प्रमाणीकरण जाँच हुँदैछ…</main>;
   return (
     <main className="min-h-screen bg-[#f4f6f3] text-slate-800">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
