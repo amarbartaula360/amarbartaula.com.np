@@ -29,14 +29,16 @@ export default function BhalaiKoshPage() {
     }).then(data => { if (data?.authenticated) setAuthReady(true); }).catch(() => router.replace("/bhalaikosh"));
   }, [router]);
   const [active, setActive] = useState("Overview");
-  const [members, setMembers] = useState(initialMembers);\n  const [savingMembers, setSavingMembers] = useState(false);
+  const [members, setMembers] = useState(initialMembers);
+  const [savingMembers, setSavingMembers] = useState(false);
   const [query, setQuery] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newId, setNewId] = useState("");
-  const [notice, setNotice] = useState("Database बाट सदस्य विवरण लोड हुँदैछ।");\n  useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
+  const [notice, setNotice] = useState("Database बाट सदस्य विवरण लोड हुँदैछ।");
+  useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
