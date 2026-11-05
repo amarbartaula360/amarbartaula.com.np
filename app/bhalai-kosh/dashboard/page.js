@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wallet, Users, Landmark, TrendingUp, Search, Plus, FileSpreadsheet, LayoutDashboard, HandCoins, BookOpen, BarChart3, Bell, Settings, Download, Upload, ChevronRight, Menu, X } from "lucide-react";
 
-const initialMembers = [
-  { id: "BK-0001", name: "Sample Member One", role: "सदस्य", phone: "98XXXXXXXX", joined: "२०८३ वैशाख", savings: 12000, loan: 0, status: "Active" },
-  { id: "BK-0002", name: "Sample Member Two", role: "सदस्य", phone: "98XXXXXXXX", joined: "२०८३ जेठ", savings: 11000, loan: 25000, status: "Active" },
-  { id: "BK-0003", name: "Sample Member Three", role: "सदस्य", phone: "98XXXXXXXX", joined: "२०८३ असार", savings: 10000, loan: 15000, status: "Active" },
-];
+const initialMembers = [];
 
 const navItems = [
   ["Overview", "ड्यासबोर्ड", LayoutDashboard],
@@ -44,11 +40,14 @@ export default function BhalaiKoshPage() {
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
-  const addMember = () => {
+  const addMember = async () => {
     if (!newName.trim() || !newId.trim()) return;
-    setMembers(prev => [...prev, { id: newId.trim(), name: newName.trim(), role: "सदस्य", phone: newPhone.trim(), joined: "२०८३ कात्तिक", savings: 0, loan: 0, status: "Active" }]);
-    setNewName(""); setNewPhone(""); setNewId(""); setShowAdd(false);
-    setNotice("सदस्य demo सूचीमा थपियो। वास्तविक database मा सुरक्षित गरिएको छैन।");
+    try {
+      const r=await fetch("/api/bhalai-kosh/members",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({memberCode:newId,fullName:newName,phone:newPhone})});
+      const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य थप्न सकिएन।");
+      setMembers(prev=>[...prev,{id:d.member.member_code,name:d.member.full_name,phone:d.member.phone||"",joined:d.member.joined_on||"",savings:0,loan:0,status:"Active"}]);
+      setNewName("");setNewPhone("");setNewId("");setShowAdd(false);setNotice("नयाँ सदस्य Database मा सुरक्षित भयो।");
+    } catch(e) { setNotice(e.message); }
   };
 
   if (!authReady) return <main className="grid min-h-screen place-items-center bg-[#f4f6f3] text-sm font-semibold text-slate-500">प्रमाणीकरण जाँच हुँदैछ…</main>;
