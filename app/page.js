@@ -1,96 +1,255 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+const profilePhoto = "https://raw.githubusercontent.com/amarbartaula360/school-accounting-software/main/client/assets/profile.jpg";
 import {
-  ArrowUpRight, Mail, Menu, X, Code2, GraduationCap,
-  Database, Globe2, Layers3, Sparkles, MapPin, Phone, ExternalLink
-} from "lucide-react";
+  ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor,
+  PhoneCall, Sparkles, X, Globe2
+} from 'lucide-react';
 
 const projects = [
-  { name: "Bhalai Kosh", number: "01", category: "UNITED EMPLOYEE BENEFIT FUND", desc: "Employee benefit fund management for member savings, deposits, loans, monthly repayments and financial reports.", tags: ["Next.js", "PostgreSQL", "Excel Import"], href: "/bhalaikosh", source: "https://github.com/amarbartaula360/amarbartaula.com.np", icon: Layers3 },
-  { name: "LedgerPro", number: "02", category: "ACCOUNTING SOFTWARE", desc: "A complete school and business accounting platform for transactions, payroll, attendance, invoices and financial reports.", tags: ["React", "Node.js", "PostgreSQL"], href: "/leadgerpro", source: "https://github.com/amarbartaula360/school-accounting-software", icon: Database },
-  { name: "School Fee Reminder", number: "03", category: "EDUCATION TECHNOLOGY", desc: "A school-focused platform for student fee tracking and communication workflows.", tags: ["Next.js", "Prisma", "PostgreSQL"], href: "https://fee.amarbartaula.com.np/", source: "https://github.com/amarbartaula360/uebs-calling-system", icon: GraduationCap }
+  {
+    title: 'Bhalai Kosh',
+    category: 'Bhalai Kosh',
+    description: 'Employee benefit fund management for member savings, deposits, loans, monthly repayments and financial reports.',
+    status: 'Open software',
+    icon: Database,
+    href: '/bhalaikosh'
+  },
+  {
+    title: 'LedgerPro',
+    category: 'Accounting',
+    description: 'School and business accounting platform for transactions, payroll, attendance, invoices and financial reports.',
+    status: 'Open software',
+    icon: Code2,
+    href: '/leadgerpro'
+  },
+  {
+    title: 'School Fee Reminder',
+    category: 'School Systems',
+    description: 'A school-focused platform for student fee tracking and parent communication workflows.',
+    status: 'Open software',
+    icon: PhoneCall,
+    href: 'https://fee.amarbartaula.com.np/'
+  }
 ];
-const skills = ["Next.js", "React", "JavaScript", "Tailwind CSS", "Node.js", "PostgreSQL", "Prisma", "REST APIs", "Git & GitHub", "Cloudflare", "Render", "Figma"];
-const nav = [["About", "#about"], ["Work", "#projects"], ["Skills", "#skills"], ["Contact", "#contact"]];
+
+const filters = ['All', 'Bhalai Kosh', 'Accounting', 'School Systems'];
+const skills = ['React', 'JavaScript', 'Vite', 'Node.js', 'REST APIs', 'PostgreSQL', 'Git & GitHub', 'School Information Systems'];
 
 export default function Home() {
-  const [menu, setMenu] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [nepalNow, setNepalNow] = useState(() => new Date());
+  const [activeFilter, setActiveFilter] = useState('All');
+
+  useEffect(() => {
+    const timer = setInterval(() => setNepalNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    window._mypatroDateFormat = 2;
+    window._mypatroResponseType = 'html';
+    const script = document.createElement('script');
+    script.src = 'https://mypatro.com/resources/nepali_date/nepali_date.js';
+    script.async = true;
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, []);
+
+  const nepalDate = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kathmandu', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  }).format(nepalNow);
+  const nepalTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kathmandu', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+  }).format(nepalNow);
+  const visibleProjects = projects.filter(project => activeFilter === 'All' || project.category === activeFilter);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4f3ef] text-[#17221f] selection:bg-[#c4f06b] selection:text-[#17221f]">
-      <header className="sticky top-0 z-50 border-b border-[#17221f]/10 bg-[#f4f3ef]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
-          <a href="#home" className="group flex items-center gap-3" aria-label="Amar Bartaula home">
-            <span className="grid size-10 place-items-center rounded-full bg-[#17221f] text-sm font-black tracking-tight text-[#c4f06b]">AB.</span>
-            <span className="text-sm font-bold tracking-tight">AMAR BARTAULA<span className="ml-1 text-[#84918b]">/ PORTFOLIO</span></span>
+    <div className="amar-portfolio">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap');
+        .amar-portfolio{--ink:#17231e;--muted:#68766e;--lime:#c6ed79;--paper:#f4f4ef;min-height:100vh;background:var(--paper);color:var(--ink);font-family:'DM Sans','Noto Sans Devanagari',sans-serif;overflow:hidden}
+        .amar-portfolio *{box-sizing:border-box}.amar-wrap{width:min(1180px,calc(100% - 44px));margin:auto}
+        .amar-nav{min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #17231e18}
+        .amar-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font:800 14px Manrope,sans-serif;letter-spacing:.04em}
+        .amar-brand-mark{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--lime);font-size:14px;letter-spacing:-1px}
+        .amar-brand small{display:block;color:#849087;font:600 9px 'DM Sans',sans-serif;letter-spacing:.16em;margin-top:3px}
+        .amar-links{display:flex;gap:29px;align-items:center}.amar-links a{color:#58665e;text-decoration:none;font-size:13px;font-weight:600}.amar-links a:hover{color:var(--ink)}
+        .amar-nav-right{display:flex;align-items:center;gap:12px}.amar-nav-clock{display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid #17231e20;border-radius:13px;background:#fff9}
+        .amar-nav-flag{width:25px;height:36px;display:block;filter:drop-shadow(0 2px 3px #0002)}
+        .amar-nav-date{display:flex;flex-direction:column;gap:2px;white-space:nowrap}.amar-nav-time{font:700 11px Manrope,monospace;color:var(--ink);font-variant-numeric:tabular-nums}
+        .amar-nav-bs{font:600 10px 'Noto Sans Devanagari',sans-serif;color:#64813d}.amar-nav-ad{font-size:9px;color:#879188}
+        .amar-btn{border:1px solid #17231e25;border-radius:999px;padding:12px 17px;background:#fff;color:var(--ink);font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;text-decoration:none;transition:transform .2s,background .2s}
+        .amar-btn:hover{transform:translateY(-2px);background:#f8faef}.amar-btn.primary{background:var(--ink);border-color:var(--ink);color:white}.amar-btn.primary:hover{background:#30453a}
+        .amar-menu-button{display:none;border:1px solid #17231e25;border-radius:50%;width:42px;height:42px;background:white;color:var(--ink);align-items:center;justify-content:center}
+        .amar-hero{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:52px;align-items:center;padding:92px 0 100px;min-height:590px}
+        .amar-hero:before{content:'';position:absolute;width:420px;height:420px;border-radius:50%;background:#c6ed7933;filter:blur(75px);left:-240px;top:20px;pointer-events:none}
+        .amar-hero-copy{position:relative}.amar-kicker{display:inline-flex;gap:8px;align-items:center;color:#536b34;background:#e8f1d9;border:1px solid #d5e5b8;border-radius:30px;padding:9px 14px;font-size:10px;font-weight:800;letter-spacing:.14em}
+        .amar-hero h1{font:800 clamp(48px,7vw,88px)/.98 Manrope,sans-serif;letter-spacing:-.075em;margin:25px 0 10px;color:var(--ink)}
+        .amar-hero h1 span{color:#7e9e46}.amar-nepali{font-size:20px;color:#7b897f;font-weight:700;margin:0 0 22px}
+        .amar-role{font-size:16px;font-weight:800;color:var(--ink);margin:0 0 12px}
+        .amar-lead{max-width:610px;color:#627067;font-size:15px;line-height:1.95;margin:0 0 29px}
+        .amar-actions{display:flex;gap:10px;flex-wrap:wrap}.amar-location{margin-top:28px;color:#829087;font-size:11px;display:flex;align-items:center;gap:8px}
+        .amar-visual{position:relative;min-height:410px;display:grid;place-items:center}
+        .amar-photo-card{position:relative;width:min(100%,370px);aspect-ratio:4/4.7;border-radius:32px;background:var(--ink);padding:18px;box-shadow:0 28px 65px #17231e24;overflow:hidden}
+        .amar-photo-card:before,.amar-photo-card:after{content:'';position:absolute;border:1px solid #c6ed7940;border-radius:50%;width:310px;height:310px;right:-150px;top:-135px}
+        .amar-photo-card:after{width:220px;height:220px;right:-95px;top:-85px}
+        .amar-photo-inner{position:relative;height:100%;display:flex;flex-direction:column;justify-content:space-between;z-index:1}
+        .amar-photo-top{display:flex;justify-content:space-between;color:var(--lime);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+        .amar-profile-photo{width:190px;height:190px;border-radius:50%;object-fit:cover;display:block;margin:16px auto 18px;border:5px solid #ffffff20;box-shadow:0 15px 40px #0005}
+        .amar-photo-title{font:800 clamp(30px,4vw,43px)/1.03 Manrope,sans-serif;letter-spacing:-.06em;color:white;text-align:center}
+        .amar-photo-title span{color:var(--lime)}.amar-photo-caption{font-size:12px;line-height:1.7;color:#ffffff91;text-align:center;margin-top:10px}
+        .amar-photo-bottom{display:flex;justify-content:space-between;border-top:1px solid #ffffff24;padding-top:14px;color:#ffffff70;font-size:9px;letter-spacing:.16em;text-transform:uppercase}
+        .amar-float{position:absolute;z-index:2;padding:11px 14px;border-radius:13px;background:white;border:1px solid #17231e12;color:var(--ink);font-size:11px;font-weight:800;box-shadow:0 12px 30px #17231e16}
+        .amar-float.one{top:55px;right:-12px}.amar-float.two{bottom:50px;left:-22px}
+        .amar-section{padding:76px 0;border-top:1px solid #17231e18}.amar-section-head{margin-bottom:30px}
+        .amar-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:#7e9e46;font-weight:900}
+        .amar-section h2{font:800 clamp(30px,4vw,46px)/1.08 Manrope,sans-serif;letter-spacing:-.055em;margin:12px 0;color:var(--ink)}
+        .amar-section-head p{color:#718077;line-height:1.85;margin:0;max-width:690px;font-size:14px}
+        .amar-about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+        .amar-info-card,.amar-project{background:white;border:1px solid #17231e12;border-radius:20px;padding:24px;box-shadow:0 5px 20px #17231e05}
+        .amar-info-card{transition:transform .2s,box-shadow .2s}.amar-info-card:hover{transform:translateY(-4px);box-shadow:0 16px 35px #17231e0d}
+        .amar-info-card svg{color:#7e9e46}.amar-info-card h3{font-size:16px;color:var(--ink);margin:16px 0 8px}.amar-info-card p{font-size:13px;line-height:1.85;color:#718077;margin:0}
+        .amar-skill-list{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}.amar-skill{padding:9px 13px;background:#e9eee3;border:1px solid #dce4d3;border-radius:30px;color:#53634b;font-size:11px;font-weight:700}
+        .amar-filter{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}.amar-filter button{border:1px solid #17231e20;border-radius:30px;background:white;color:#66736a;padding:9px 14px;font-size:11px;font-weight:700;cursor:pointer}
+        .amar-filter button.active{background:var(--ink);color:white;border-color:var(--ink)}
+        .amar-project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}
+        .amar-project{display:flex;flex-direction:column;min-height:285px;transition:transform .2s,border-color .2s,box-shadow .2s}
+        .amar-project:hover{transform:translateY(-4px);border-color:#a8c27b;box-shadow:0 18px 35px #17231e0d}
+        .amar-project.featured{background:#17231e;color:white;border-color:#17231e}.amar-project.featured h3{color:white}.amar-project.featured p{color:#c0cbc2}
+        .amar-project-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .amar-project-icon{width:44px;height:44px;display:grid;place-items:center;background:#edf2e6;border-radius:14px;color:#6f8c3d}
+        .amar-project.featured .amar-project-icon{background:#ffffff14;color:var(--lime)}
+        .amar-status{font-size:10px;color:#5e7938;background:#edf4e2;padding:7px 10px;border-radius:20px;font-weight:800}
+        .amar-project.featured .amar-status{color:var(--lime);background:#ffffff14}
+        .amar-project h3{font:800 20px Manrope,sans-serif;letter-spacing:-.04em;margin:22px 0 8px;color:var(--ink)}
+        .amar-project p{font-size:13px;line-height:1.85;color:#718077;margin:0 0 20px}
+        .amar-project .amar-btn{margin-top:auto;align-self:flex-start}.amar-note{color:#8b968e;font-size:11px;margin-top:auto}
+        .amar-contact{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:38px;border-radius:26px;background:var(--ink);color:white;position:relative;overflow:hidden}
+        .amar-contact:after{content:'';position:absolute;width:300px;height:300px;border:1px solid #c6ed7933;border-radius:50%;right:-110px;top:-150px;box-shadow:0 0 0 45px #c6ed7908,0 0 0 90px #c6ed7905}
+        .amar-contact-content{position:relative;z-index:1}.amar-contact h2{margin:0 0 9px;font:800 32px Manrope,sans-serif;letter-spacing:-.05em;color:white}
+        .amar-contact p{margin:0;color:#c0cbc2;font-size:13px;line-height:1.8}
+        .amar-contact-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+        .amar-contact-links a{color:#eef4e8;text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:7px;border:1px solid #ffffff30;border-radius:30px;padding:10px 13px}
+        .amar-contact-links a:hover{background:#ffffff12}.amar-contact>.amar-btn{position:relative;z-index:1;flex-shrink:0;background:var(--lime);color:var(--ink);border-color:var(--lime)}
+        .amar-footer{border-top:1px solid #17231e18;padding:24px 0;color:#829087;font-size:11px;display:flex;justify-content:space-between;gap:12px}
+        @media(max-width:850px){.amar-hero{grid-template-columns:1fr;gap:28px;padding:65px 0}.amar-visual{min-height:390px}.amar-about-grid{grid-template-columns:1fr 1fr}.amar-links{display:none}.amar-menu-button{display:inline-flex}.amar-nav{position:relative}.amar-mobile-links{position:absolute;top:calc(100% + 1px);left:0;right:0;z-index:10;display:grid;gap:4px;padding:12px;background:var(--paper);border:1px solid #17231e18;border-radius:0 0 16px 16px;box-shadow:0 15px 30px #17231e12}.amar-mobile-links a{padding:12px;color:var(--ink);text-decoration:none;font-size:13px;font-weight:700}}
+        @media(max-width:560px){.amar-wrap{width:calc(100% - 30px)}.amar-nav{min-height:72px}.amar-nav-clock{gap:5px;padding:5px 7px}.amar-nav-flag{width:20px;height:29px}.amar-nav-time{font-size:9px}.amar-nav-bs{font-size:9px}.amar-nav-ad{font-size:8px}.amar-nav-right{gap:7px}.amar-nav-right>.amar-btn{display:none}.amar-hero{padding:55px 0 65px}.amar-hero h1{letter-spacing:-.065em}.amar-visual{min-height:340px}.amar-photo-card{max-width:310px}.amar-profile-photo{width:155px;height:155px}.amar-float.one{right:-3px;top:28px}.amar-float.two{left:-4px;bottom:25px}.amar-section{padding:57px 0}.amar-about-grid,.amar-project-grid{grid-template-columns:1fr}.amar-contact{padding:25px;align-items:flex-start;flex-direction:column}.amar-contact h2{font-size:27px}.amar-footer{flex-direction:column}}
+        @media(prefers-reduced-motion:reduce){.amar-portfolio *{animation:none!important;transition:none!important}}
+      `}</style>
+
+      <div className="amar-wrap">
+        <header className="amar-nav">
+          <a className="amar-brand" href="#home" onClick={closeMenu}>
+            <span className="amar-brand-mark">AB.</span>
+            <span>AMAR BARTAULA<small>PORTFOLIO / NEPAL</small></span>
           </a>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-[#53605a] md:flex">
-            {nav.map(([label, href]) => <a key={label} href={href} className="transition hover:text-[#17221f]">{label}</a>)}
+          <nav className="amar-links">
+            <a href="#home">Home</a><a href="#about">About</a><a href="#projects">Projects</a><a href="#skills">Skills</a><a href="#contact">Contact</a>
           </nav>
-          <a href="#contact" className="hidden items-center gap-2 rounded-full bg-[#c4f06b] px-5 py-3 text-sm font-bold transition hover:bg-[#b4e45a] md:inline-flex">Let’s talk <ArrowUpRight size={16}/></a>
-          <button onClick={() => setMenu(!menu)} className="rounded-full border border-[#17221f]/15 p-2 md:hidden" aria-label="Toggle menu">{menu ? <X size={20}/> : <Menu size={20}/>}</button>
-        </div>
-        {menu && <nav className="grid gap-1 border-t border-[#17221f]/10 bg-[#f4f3ef] p-4 md:hidden">{nav.map(([label, href]) => <a key={label} onClick={() => setMenu(false)} href={href} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-white">{label}</a>)}</nav>}
-      </header>
-
-      <section id="home" className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-20 sm:px-8 md:grid-cols-[1.15fr_.85fr] md:pb-32 md:pt-28">
-        <div className="absolute -left-40 top-20 size-80 rounded-full bg-[#c4f06b]/20 blur-3xl"/>
-        <div className="relative">
-          <p className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#17221f]/15 px-4 py-2 text-[11px] font-bold uppercase tracking-[.18em] text-[#53605a]"><span className="size-2 rounded-full bg-[#7ebc37]"/> Building useful digital products</p>
-          <p className="text-xs font-bold uppercase tracking-[.28em] text-[#77827c]">Hello, I’m</p>
-          <h1 className="mt-5 max-w-3xl text-[clamp(3.6rem,8vw,7.4rem)] font-black leading-[.91] tracking-[-.075em]">Amar<br/><span className="text-[#7c9f43]">Bartaula.</span></h1>
-          <h2 className="mt-8 text-xl font-semibold tracking-tight sm:text-2xl">Full-stack Web Developer</h2>
-          <p className="mt-2 text-sm text-[#6b7770]">Educational Administrator <span className="px-1 text-[#a5afa9]">·</span> Technology Integrator</p>
-          <p className="mt-7 max-w-xl text-base leading-8 text-[#53605a]">I design and build practical digital products that make everyday work simpler — from modern web experiences to education-focused management systems.</p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <a href="#projects" className="inline-flex items-center gap-3 rounded-full bg-[#17221f] px-6 py-4 text-sm font-bold text-white transition hover:bg-[#30443b]">Explore my work <ArrowUpRight size={17}/></a>
-            <a href="#contact" className="inline-flex items-center gap-2 rounded-full border border-[#17221f]/20 px-6 py-4 text-sm font-bold transition hover:bg-white">Get in touch</a>
-          </div>
-          <p className="mt-10 flex items-center gap-2 text-xs font-medium text-[#77827c]"><MapPin size={14}/> Based in Nepal · Building for the web</p>
-        </div>
-        <div className="relative mx-auto w-full max-w-[470px]">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-[#17221f] p-7 text-white shadow-2xl shadow-[#17221f]/15 sm:p-10">
-            <div className="absolute -right-20 -top-20 size-72 rounded-full border border-[#c4f06b]/25"/>
-            <div className="absolute -right-8 -top-8 size-48 rounded-full border border-[#c4f06b]/25"/>
-            <div className="relative flex h-full flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.22em] text-[#c4f06b]"><span>Developer / Creator</span><Sparkles size={17}/></div>
-              <div>
-                <div className="mb-8 grid size-24 place-items-center rounded-[1.7rem] border border-white/15 bg-white/5 text-4xl font-black tracking-[-.08em] text-[#c4f06b]">AB.</div>
-                <p className="max-w-xs text-4xl font-black leading-[1.05] tracking-[-.05em] sm:text-5xl">Ideas into<br/><span className="text-[#c4f06b]">systems.</span></p>
-                <p className="mt-5 max-w-xs text-sm leading-7 text-white/55">Thoughtful design. Useful technology. Real-world impact.</p>
+          <div className="amar-nav-right">
+            <div className="amar-nav-clock" aria-label="Nepal date and time">
+              <svg className="amar-nav-flag" viewBox="0 0 100 120" role="img" aria-label="Nepal flag">
+                <path d="M5 3 L91 53 L31 53 L91 112 L5 112 Z" fill="#003893" stroke="#003893" strokeWidth="2" strokeLinejoin="round"/>
+                <path d="M9 10 L78 50 L28 50 L83 105 L9 105 Z" fill="#dc143c" stroke="#fff" strokeWidth="2" strokeLinejoin="round"/>
+                <path d="M18 35 C27 52 46 53 55 38 C50 58 24 60 18 35Z" fill="#fff"/>
+                <path d="M35 65 L39 75 L50 72 L44 81 L50 90 L39 87 L35 98 L31 87 L20 90 L26 81 L20 72 L31 75Z" fill="#fff"/>
+              </svg>
+              <div className="amar-nav-date">
+                <span className="amar-nav-time">{nepalTime} NPT</span>
+                <span className="amar-nav-bs" id="mypatro_nepali_date">नेपाली मिति लोड हुँदैछ…</span>
+                <span className="amar-nav-ad">{nepalDate}</span>
               </div>
-              <div className="flex items-end justify-between border-t border-white/15 pt-5"><span className="text-[10px] uppercase tracking-[.2em] text-white/45">Portfolio · 2026</span><Code2 className="text-[#c4f06b]" size={25}/></div>
             </div>
+            <a className="amar-btn" href="#contact">Let’s talk <ArrowUpRight size={15}/></a>
+            <button className="amar-menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation">{menuOpen ? <X size={19}/> : <Menu size={19}/>}</button>
           </div>
-          <div className="absolute -bottom-5 -left-5 rounded-2xl border border-[#17221f]/10 bg-white px-5 py-4 shadow-xl"><Code2 size={18} className="text-[#789b3e]"/><p className="mt-2 text-sm font-bold">Full-stack</p><p className="text-xs text-[#7b867f]">Web development</p></div>
-          <div className="absolute -right-4 top-12 rounded-2xl bg-[#c4f06b] px-5 py-4 shadow-xl"><Globe2 size={18}/><p className="mt-2 text-sm font-bold">Digital systems</p><p className="text-xs text-[#45533b]">Education-focused</p></div>
-        </div>
-      </section>
+          {menuOpen && <nav className="amar-mobile-links"><a href="#home" onClick={closeMenu}>Home</a><a href="#about" onClick={closeMenu}>About</a><a href="#projects" onClick={closeMenu}>Projects</a><a href="#skills" onClick={closeMenu}>Skills</a><a href="#contact" onClick={closeMenu}>Contact</a></nav>}
+        </header>
 
-      <section id="about" className="border-y border-[#17221f]/10 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-20 sm:px-8 md:grid-cols-[.8fr_1.2fr] md:py-24">
-          <div><p className="text-[11px] font-bold uppercase tracking-[.24em] text-[#789b3e]">01 / About</p><h2 className="mt-5 max-w-sm text-4xl font-black leading-[1.05] tracking-[-.05em] sm:text-5xl">Technology with a human purpose.</h2></div>
-          <div className="flex flex-col justify-end"><p className="max-w-2xl text-lg leading-9 text-[#53605a]">I’m interested in connecting people, processes and technology through clear interfaces and structured information. My work focuses on practical web applications, education technology and continuous improvement.</p><div className="mt-8 grid grid-cols-2 gap-4 border-t border-[#17221f]/10 pt-6 sm:grid-cols-3"><div><p className="text-2xl font-black">Web</p><p className="mt-1 text-xs text-[#7b867f]">Application development</p></div><div><p className="text-2xl font-black">EdTech</p><p className="mt-1 text-xs text-[#7b867f]">Education workflows</p></div><div className="col-span-2 sm:col-span-1"><p className="text-2xl font-black">UI/UX</p><p className="mt-1 text-xs text-[#7b867f]">Simple user experiences</p></div></div></div>
-        </div>
-      </section>
+        <main>
+          <section className="amar-hero" id="home">
+            <div className="amar-hero-copy">
+              <div className="amar-kicker"><Sparkles size={14}/> BUILDING USEFUL DIGITAL PRODUCTS</div>
+              <h1>Hi, I’m<br/><span>Amar Bartaula.</span></h1>
+              <p className="amar-nepali">अमर बर्तौला</p>
+              <p className="amar-role">Full-stack Web Developer <span style={{color:'#9aa59d'}}>·</span> Educational Technology</p>
+              <p className="amar-lead">I create practical digital solutions with a focus on software, school administration, and accounting workflows. I enjoy turning everyday challenges into clear, useful digital experiences.</p>
+              <div className="amar-actions">
+                <a className="amar-btn primary" href="#projects">Explore my work <ArrowUpRight size={16}/></a>
+                <a className="amar-btn" href="#contact"><Mail size={15}/> Get in touch</a>
+              </div>
+              <div className="amar-location"><Globe2 size={14}/> Based in Nepal · Building for the web</div>
+            </div>
+            <div className="amar-visual" aria-label="Amar Bartaula profile">
+              <div className="amar-photo-card">
+                <div className="amar-photo-inner">
+                  <div className="amar-photo-top"><span>Developer / Creator</span><Sparkles size={17}/></div>
+                  <div>
+                    <img className="amar-profile-photo" src={profilePhoto} alt="Amar Bartaula"/>
+                    <div className="amar-photo-title">Ideas into<br/><span>systems.</span></div>
+                    <p className="amar-photo-caption">Thoughtful design. Useful technology. Real-world impact.</p>
+                  </div>
+                  <div className="amar-photo-bottom"><span>Portfolio · {new Date().getFullYear()}</span><Code2 size={20}/></div>
+                </div>
+              </div>
+              <div className="amar-float one"><Code2 size={14} style={{display:'inline',verticalAlign:'middle',marginRight:6}}/> Web development</div>
+              <div className="amar-float two"><Database size={14} style={{display:'inline',verticalAlign:'middle',marginRight:6}}/> Digital systems</div>
+            </div>
+          </section>
 
-      <section id="projects" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-28">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[.24em] text-[#789b3e]">02 / Selected work</p><h2 className="mt-5 text-4xl font-black tracking-[-.05em] sm:text-5xl">Built around<br/>real needs.</h2></div><p className="max-w-sm text-sm leading-7 text-[#66736c]">A selection of platforms focused on practical workflows and useful user experiences.</p></div>
-        <div className="mt-12 grid gap-4 md:grid-cols-3">{projects.map(p => { const Icon = p.icon; return <article key={p.name} className="group flex min-h-[390px] flex-col rounded-[1.7rem] border border-[#17221f]/10 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-[#9cba6b] hover:shadow-xl hover:shadow-[#17221f]/5 sm:p-7"><div className="flex items-center justify-between"><span className="text-xs font-bold tracking-[.2em] text-[#9aa49e]">{p.number}</span><span className="grid size-12 place-items-center rounded-2xl bg-[#edf3e4] text-[#617f32]"><Icon size={22}/></span></div><p className="mt-9 text-[10px] font-bold tracking-[.2em] text-[#819b55]">{p.category}</p><h3 className="mt-3 text-2xl font-black tracking-[-.04em]">{p.name}</h3><p className="mt-3 flex-1 text-sm leading-7 text-[#68756e]">{p.desc}</p><div className="mt-6 flex flex-wrap gap-2">{p.tags.map(t => <span key={t} className="rounded-full bg-[#f1f2ee] px-3 py-1.5 text-[10px] font-semibold text-[#5e6a63]">{t}</span>)}</div><div className="mt-7 flex items-center justify-between border-t border-[#17221f]/10 pt-5 text-xs font-bold"><a href={p.href} target={p.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="inline-flex items-center gap-2 text-[#536f2d]">View project <ArrowUpRight size={15}/></a><a href={p.source} target="_blank" rel="noreferrer" aria-label={"Source code for " + p.name} className="inline-flex items-center gap-2 text-[#7b867f] transition hover:text-[#17221f]">Source <Code2 size={15}/></a></div></article>; })}</div>
-      </section>
+          <section className="amar-section" id="about">
+            <div className="amar-section-head"><div className="amar-eyebrow">01 / About</div><h2>Technology with a human purpose.</h2><p>My work focuses on turning day-to-day organizational needs into clear, dependable digital workflows — especially in education and accounting.</p></div>
+            <div className="amar-about-grid">
+              <article className="amar-info-card"><Code2 size={25}/><h3>Frontend Development</h3><p>Responsive interfaces, clean layouts, and practical user experiences for web applications.</p></article>
+              <article className="amar-info-card"><Database size={25}/><h3>Backend & Database</h3><p>Application logic, data organization, and connecting user interfaces with backend services.</p></article>
+              <article className="amar-info-card"><GraduationCap size={25}/><h3>Education Technology</h3><p>Digital workflows for student records, examinations, fees, administration, and accounting.</p></article>
+            </div>
+          </section>
 
-      <section id="skills" className="border-y border-[#17221f]/10 bg-[#e9ece5]">
-        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-24"><p className="text-[11px] font-bold uppercase tracking-[.24em] text-[#789b3e]">03 / Toolkit</p><div className="mt-5 grid gap-8 md:grid-cols-[.8fr_1.2fr]"><h2 className="max-w-sm text-4xl font-black leading-[1.05] tracking-[-.05em] sm:text-5xl">Tools for turning ideas into products.</h2><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{skills.map((s, i) => <div key={s} className="flex items-center gap-3 rounded-xl border border-[#17221f]/10 bg-white/70 p-4 text-sm font-semibold"><span className="text-[10px] text-[#9aaa8c]">0{i + 1}</span>{s}</div>)}</div></div></div>
-      </section>
+          <section className="amar-section" id="projects">
+            <div className="amar-section-head"><div className="amar-eyebrow">02 / Selected Work</div><h2>Built around real needs.</h2><p>Explore current and selected software projects. The school management system is the active project.</p></div>
+            <div className="amar-filter">{filters.map(filter=><button key={filter} className={activeFilter===filter?'active':''} onClick={()=>setActiveFilter(filter)}>{filter}</button>)}</div>
+            <div className="amar-project-grid">
+              {visibleProjects.map(project=>{const Icon=project.icon;return <article className={`amar-project ${project.featured?'featured':''}`} key={project.title}>
+                <div className="amar-project-top"><div className="amar-project-icon"><Icon size={21}/></div><span className="amar-status">{project.status}</span></div>
+                <h3>{project.title}</h3><p>{project.description}</p>
+                {project.featured
+                  ? <a className="amar-btn primary" href={project.href}>View project <ArrowUpRight size={15}/></a>
+                  : project.href
+                    ? <a className="amar-btn primary" href={project.href} target={project.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">View project <ArrowUpRight size={15}/></a>
+                    : <span className="amar-note">{project.category}</span>}
+              </article>})}
+            </div>
+          </section>
 
-      <section id="contact" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-28">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#17221f] p-8 text-white sm:p-12 md:p-16"><div className="absolute -right-24 -top-28 size-96 rounded-full border border-[#c4f06b]/20"/><div className="absolute -right-8 -top-12 size-64 rounded-full border border-[#c4f06b]/20"/>
-          <div className="relative"><p className="text-[11px] font-bold uppercase tracking-[.24em] text-[#c4f06b]">04 / Get in touch</p><h2 className="mt-6 max-w-2xl text-4xl font-black leading-[1.02] tracking-[-.05em] sm:text-6xl">Have a project<br/>in mind<span className="text-[#c4f06b]">?</span></h2><p className="mt-5 max-w-xl text-sm leading-7 text-white/60">Have an idea, collaboration or question? Get in touch and let’s explore what we can build together.</p>
-            <div className="mt-9 flex flex-wrap gap-3"><a href="tel:+9779845433722" className="inline-flex items-center gap-2 rounded-full bg-[#c4f06b] px-5 py-3.5 text-sm font-bold text-[#17221f] transition hover:bg-[#b4e45a]"><Phone size={16}/> +977 9845433722</a><a href="mailto:amarbartaula360@gmail.com" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-3.5 text-sm font-semibold transition hover:bg-white/10"><Mail size={16}/> Email me</a><a href="https://www.facebook.com/lbartaula" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-3.5 text-sm font-semibold transition hover:bg-white/10"><Globe2 size={16}/> Facebook</a><a href="https://github.com/amarbartaula360" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-3.5 text-sm font-semibold transition hover:bg-white/10"><Code2 size={16}/> GitHub</a></div>
-            <p className="mt-6 text-xs text-white/40">Available for project discussions and collaboration.</p>
-          </div>
-        </div>
-      </section>
-      <footer className="border-t border-[#17221f]/10 px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-xs text-[#78847d] sm:flex-row"><span>© {new Date().getFullYear()} Amar Bartaula. Built with purpose.</span><a href="#home" className="inline-flex items-center gap-1 font-semibold transition hover:text-[#17221f]">Back to top <ArrowUpRight size={13}/></a></div></footer>
-    </main>
+          <section className="amar-section" id="skills">
+            <div className="amar-section-head"><div className="amar-eyebrow">03 / Toolkit</div><h2>Tools for turning ideas into products.</h2><p>A practical toolkit for building and maintaining modern web applications.</p></div>
+            <div className="amar-skill-list">{skills.map(skill=><span className="amar-skill" key={skill}>{skill}</span>)}</div>
+          </section>
+
+          <section className="amar-section" id="contact">
+            <div className="amar-contact">
+              <div className="amar-contact-content">
+                <div className="amar-eyebrow" style={{color:'#c6ed79'}}>04 / Get in touch</div>
+                <h2>Have a project in mind?</h2>
+                <p>For project discussions, collaboration, or questions, feel free to reach out.</p>
+                <div className="amar-contact-links">
+                  <a href="tel:+9779845433722"><PhoneCall size={15}/> +977 9845433722</a>
+                  <a href="mailto:amarbartaula360@gmail.com"><Mail size={15}/> Email</a>
+                  <a href="https://www.facebook.com/lbartaula" target="_blank" rel="noreferrer"><Globe2 size={15}/> Facebook</a>
+                  <a href="https://github.com/amarbartaula360" target="_blank" rel="noreferrer"><Code2 size={15}/> GitHub</a>
+                </div>
+              </div>
+              <a className="amar-btn" href="mailto:amarbartaula360@gmail.com">Let’s connect <ArrowUpRight size={16}/></a>
+            </div>
+          </section>
+        </main>
+
+        <footer className="amar-footer"><span>© {new Date().getFullYear()} Amar Bartaula</span><span>Personal Portfolio · Software & Digital Solutions</span></footer>
+      </div>
+    </div>
   );
 }
