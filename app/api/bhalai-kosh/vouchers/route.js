@@ -42,11 +42,13 @@ export async function POST(request) {
     if(acc.rowCount!==ids.length) throw Object.assign(new Error("छानिएको खाता भेटिएन वा निष्क्रिय छ।"),{status:400});
     const memberIds=[...new Set(normalized.filter(x=>x.memberId).map(x=>x.memberId))];
     if(memberIds.length){const m=await c.query("SELECT id FROM members WHERE organization_id=$1 AND id=ANY($2::bigint[])",[s.oid,memberIds]);if(m.rowCount!==memberIds.length)throw Object.assign(new Error("सदस्य विवरण मिलेन।"),{status:400});}
+    let paymentCashLine=null;
     if(type==="payment"){
-      const cashLines=normalized.filter(x=>x.debit>0);
-      if(cashLines.length!==1) throw Object.assign(new Error("Payment Voucher मा Cash/Bank खाताको एउटा Debit लाइन हुनुपर्छ।"),{status:400});
-      const cash=await c.query("SELECT account_type FROM chart_of_accounts WHERE id=$1 AND organization_id=$2",[cashLines[0].accountId,s.oid]);
-      if(!["asset"].includes(cash.rows[0]?.account_type)) throw Object.assign(new Error("भुक्तानीको Debit खाता Asset (Cash/Bank) हुनुपर्छ।"),{status:400});
+      const cashLines=normalized.filter(x=>x.credit>0);
+      if(cashLines.length!==1) throw Object.assign(new Error("Payment Voucher मा Cash/Bank खाताको एउटा Credit लाइन हुनुपर्छ।"),{status:400});
+      const cash=await c.query("SELECT account_type,account_code FROM chart_of_accounts WHERE id=$1 AND organization_id=$2",[cashLines[0].accountId,s.oid]);
+      if(cash.rows[0]?.account_type!=="asset" || !["1001","1002"].includes(cash.rows[0]?.account_code)) throw Object.assign(new Error("भुक्तानीको Credit खाता Cash वा Bank हुनुपर्छ।"),{status:400});
+      paymentCashLine=cashLines[0];
     }
     const voucherNo="BK-"+(type==="journal"?"JV":"PV")+"-"+Date.now();
     const v=await c.query(`INSERT INTO vouchers(organization_id,voucher_no,voucher_type,voucher_date,narration,status,created_by,posted_at)
@@ -57,6 +59,11 @@ export async function POST(request) {
         await c.query(`INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,debit,credit,narration)
           VALUES($1,$2,$3,COALESCE($4::date,CURRENT_DATE),$5,$6,$7,$8)`,[s.oid,line.memberId,v.rows[0].id,date,type,line.debit,line.credit,line.narration||narration]);
       }
+    }
+    if(type==="payment"){
+      const code=(await c.query("SELECT account_code FROM chart_of_accounts WHERE id=$1",[paymentCashLine.accountId])).rows[0].account_code;
+      const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,code==="1002"?"bank":"cash"]);
+      if(cash.rowCount) await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'out','payment_voucher',' + ' || '$4','voucher',$5,$6,$7,$8)",[s.oid,cash.rows[0].id,date,paymentCashLine.credit,v.rows[0].id,voucherNo,narration,s.uid||null]);
     }
     await c.query("COMMIT");
     return NextResponse.json({ok:true,voucherId:v.rows[0].id,voucherNo:v.rows[0].voucher_no,totalDebit:debit,totalCredit:credit},{status:201});
