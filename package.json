@@ -16,7 +16,8 @@
     "react-dom": "19.3.0",
     "pg": "^8.16.3",
     "bcryptjs": "^3.0.2",
-    "jose": "^6.1.0"
+    "jose": "^6.1.0",
+    "nepali-date-converter": "^3.4.2"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
