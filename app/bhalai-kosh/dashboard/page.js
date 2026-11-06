@@ -51,6 +51,10 @@ export default function BhalaiKoshPage() {
   const [depositLoading, setDepositLoading] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState(null);
   const [annualRows, setAnnualRows] = useState([]);
+  const [ledgerMemberId, setLedgerMemberId] = useState("");
+  const [ledgerData, setLedgerData] = useState(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerError, setLedgerError] = useState("");
   const nepaliMonths = ["साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत","बैशाख","जेठ","असार"];
   const loadMonthlyContributions = async () => {
     setDepositLoading(true);
@@ -83,6 +87,27 @@ export default function BhalaiKoshPage() {
   const activeMembers = members.filter(m => m.status === "Active" && m.dbId);
 
   useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({...m,dbId:m.id,id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
+  useEffect(() => {
+    if (!authReady || active !== "Ledger") return;
+    if (!ledgerMemberId) { setLedgerData(null); setLedgerError(""); return; }
+    const controller = new AbortController();
+    const loadLedger = async () => {
+      setLedgerLoading(true);
+      setLedgerError("");
+      try {
+        const response = await fetch("/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId), { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "सदस्य Ledger ल्याउन सकिएन।");
+        setLedgerData(data);
+      } catch (error) {
+        if (error.name !== "AbortError") setLedgerError(error.message || "Ledger ल्याउन सकिएन।");
+      } finally {
+        if (!controller.signal.aborted) setLedgerLoading(false);
+      }
+    };
+    loadLedger();
+    return () => controller.abort();
+  }, [authReady, active, ledgerMemberId]);
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
@@ -188,7 +213,30 @@ export default function BhalaiKoshPage() {
           {active === "Loans" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">ऋण आवेदन तथा स्वीकृति</h2><p className="mt-2 text-sm text-slate-500">ऋण उपलब्ध कोषको सीमा भित्र मात्र स्वीकृत गर्ने। ब्याजदर, अवधि र EMI तालिका स्वीकृतिपूर्व देखाउने।</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{["ऋण आवेदन","स्वीकृत ऋण","किस्ता तालिका"].map(x=><div key={x} className="rounded-xl border border-slate-200 p-4"><HandCoins className="text-emerald-700"/><p className="mt-3 font-bold">{x}</p><p className="mt-1 text-xs text-slate-400">Backend जडानपछि सक्रिय हुनेछ</p></div>)}</div></article>}
           {active === "Import" && <article className="rounded-2xl border border-dashed border-emerald-300 bg-white p-8 text-center"><FileSpreadsheet className="mx-auto text-emerald-700" size={34}/><h2 className="mt-4 font-extrabold">मासिक Excel / CSV Import</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">Employee ID, Name, Month, Monthly Deposit, EMI Amount र Penalty/Extra भएका फाइल अपलोड गरी Preview र Validation पछि मात्र Import गर्ने सुविधा।</p><label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"><Upload size={16}/> Excel / CSV छान्नुहोस्<input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e=>setNotice(e.target.files?.[0] ? e.target.files[0].name+" चयन भयो। Import Preview सुविधा backend चरणमा जडान हुनेछ।" : notice)}/></label></article>}
           {active === "Reports" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">वित्तीय प्रतिवेदन</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{["मासिक बचत प्रतिवेदन","वार्षिक कोष विवरण","सदस्यगत बचत विवरण","ऋण तथा बाँकी किस्ता","बैंक/नगद मिलान","जरिवाना तथा अतिरिक्त रकम"].map(x=><div key={x} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">{x}<Download size={16} className="text-slate-400"/></div>)}</div></article>}
-          {active === "Ledger" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">व्यक्तिगत सदस्य Ledger</h2><p className="mt-2 text-sm text-slate-500">प्रत्येक सदस्यको बचत जम्मा, ऋण वितरण, मूलधन असुली, ब्याज र जरिवाना छुट्टाछुट्टै देखिने running balance सहितको विवरण।</p><div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">सदस्य चयन र कारोबार विवरण database/API जडानपछि उपलब्ध हुनेछ।</div></article>}
+          {active === "Ledger" && <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div><h2 className="font-extrabold">व्यक्तिगत सदस्य Ledger</h2><p className="mt-1 text-sm text-slate-500">Database मा सुरक्षित सदस्य कारोबार र प्रत्येक कारोबारपछिको बाँकी रकम।</p></div>
+              <label className="w-full text-xs font-semibold text-slate-600 sm:max-w-sm">सदस्य छान्नुहोस्
+                <select value={ledgerMemberId} onChange={e=>setLedgerMemberId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm">
+                  <option value="">-- सदस्य चयन गर्नुहोस् --</option>
+                  {members.filter(m=>m.dbId).map(m=><option key={m.dbId} value={m.dbId}>{m.id} — {m.name}</option>)}
+                </select>
+              </label>
+            </div>
+            {ledgerLoading && <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ledger Database बाट लोड हुँदैछ…</p>}
+            {ledgerError && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{ledgerError}</p>}
+            {ledgerData && <><div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-800">सदस्य</p><p className="mt-1 font-extrabold text-emerald-950">{ledgerData.member.full_name}</p><p className="text-xs text-emerald-800">{ledgerData.member.member_code}</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">कुल जम्मा Credit</p><p className="mt-1 text-xl font-black">{money((ledgerData.transactions||[]).reduce((s,x)=>s+Number(x.credit||0),0))}</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">हालको बाँकी Balance</p><p className="mt-1 text-xl font-black">{money(ledgerData.transactions?.length ? ledgerData.transactions[ledgerData.transactions.length-1].running_balance : 0)}</p></div>
+            </div>
+            <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
+              <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? new Date(String(row.transaction_date).slice(0,10)+"T12:00:00").toLocaleDateString("ne-NP-u-ca-bikram") : "—"}</td><td className="px-4 py-3">{row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td></tr>)}
+                {!ledgerData.transactions?.length && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-400">यस सदस्यको Ledger मा कारोबार भेटिएन। पहिले Opening Balance वा बचत कारोबार दर्ता गर्नुहोस्।</td></tr>}
+              </tbody></table></div></>}
+            {!ledgerMemberId && !ledgerLoading && <div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Ledger हेर्न माथिबाट सदस्य चयन गर्नुहोस्।</div>}
+          </article>}
           {active === "Settings" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">कोष सेटिङ</h2><p className="mt-2 text-sm text-slate-500">मासिक बचत रकम, ब्याज गणना विधि, ऋण अवधि, जरिवाना नियम र वित्तीय वर्ष सेट गर्ने सुविधा।</p></article>}
         </section>
       </div>
