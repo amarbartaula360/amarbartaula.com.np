@@ -63,7 +63,7 @@ export async function POST(request) {
     if(type==="payment"){
       const code=(await c.query("SELECT account_code FROM chart_of_accounts WHERE id=$1",[paymentCashLine.accountId])).rows[0].account_code;
       const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,code==="1002"?"bank":"cash"]);
-      if(cash.rowCount) await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'out','payment_voucher',' + ' || '$4','voucher',$5,$6,$7,$8)",[s.oid,cash.rows[0].id,date,paymentCashLine.credit,v.rows[0].id,voucherNo,narration,s.uid||null]);
+      if(cash.rowCount) await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'out','payment_voucher',$4,'voucher',$5,$6,$7,$8)",[s.oid,cash.rows[0].id,date,paymentCashLine.credit,v.rows[0].id,voucherNo,narration,s.uid||null]);
     }
     await c.query("COMMIT");
     return NextResponse.json({ok:true,voucherId:v.rows[0].id,voucherNo:v.rows[0].voucher_no,totalDebit:debit,totalCredit:credit},{status:201});
