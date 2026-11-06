@@ -18,7 +18,8 @@ export async function GET(request) {
       WHERE v.organization_id=$1 ${filter}
       GROUP BY v.id ORDER BY v.voucher_date DESC,v.id DESC LIMIT 150
     `,values);
-    return NextResponse.json({vouchers:rows});
+    const accounts=await getBhalaiKoshPool().query("SELECT id,account_code,account_name,account_type FROM chart_of_accounts WHERE organization_id=$1 AND is_active=true ORDER BY account_code",[s.oid]);
+    return NextResponse.json({vouchers:rows,accounts:accounts.rows});
   } catch(e){console.error("Voucher GET",e);return NextResponse.json({error:"Voucher विवरण ल्याउन सकिएन।"},{status:500});}
 }
 export async function POST(request) {
