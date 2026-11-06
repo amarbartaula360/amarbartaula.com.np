@@ -30,15 +30,21 @@ export async function PATCH(request,{params}){
   const loan=q.rows[0];if(!loan)throw Object.assign(new Error("ऋण भेटिएन।"),{status:404});
   if(action==="approve"){
    if(loan.status!=="pending")throw Object.assign(new Error("Pending आवेदन मात्र स्वीकृत गर्न मिल्छ।"),{status:409});
-   await c.query("UPDATE loans SET status='approved',approved_by=$2,approved_at=now() WHERE id=$1",[id,s.uid||null]);
+   const approvedOn=String(b.approvedOn||new Date().toISOString().slice(0,10));
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(approvedOn))throw Object.assign(new Error("स्वीकृति मिति सही राख्नुहोस्।"),{status:400});
+   await c.query("UPDATE loans SET status='approved',approved_on=$2::date,approved_by=$3,approved_at=now() WHERE id=$1",[id,approvedOn,s.uid||null]);
+   // स्वीकृत भएको मितिको अर्को महिनादेखि EMI तालिका बनाउने।
+   const due=schedule(Number(loan.principal),Number(loan.annual_interest_rate),Number(loan.term_months),loan.interest_method,approvedOn);
+   for(const x of due)await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[id,x.no,x.date,x.principal,x.interest]);
   }else if(action==="reject"){
    if(loan.status!=="pending")throw Object.assign(new Error("Pending आवेदन मात्र अस्वीकृत गर्न मिल्छ।"),{status:409});
-   await c.query("UPDATE loans SET status='rejected',approved_by=$2,approved_at=now() WHERE id=$1",[id,s.uid||null]);
+   const decisionOn=String(b.approvedOn||new Date().toISOString().slice(0,10));
+   await c.query("UPDATE loans SET status='rejected',approved_on=$2::date,approved_by=$3,approved_at=now() WHERE id=$1",[id,decisionOn,s.uid||null]);
   }else if(action==="disburse"){
    if(loan.status!=="approved")throw Object.assign(new Error("पहिले ऋण स्वीकृत गर्नुहोस्।"),{status:409});
    if(loan.member_status!=="active")throw Object.assign(new Error("Left वा निष्क्रिय सदस्यलाई ऋण वितरण गर्न मिल्दैन।"),{status:400});
    const amount=Number(b.amount||loan.principal),method=String(b.paymentMethod||"cash"),cashCode=["bank","transfer","cheque","online"].includes(method)?"1002":"1001";
-   if(!Number.isFinite(amount)||amount<=0||amount>Number(loan.principal))throw Object.assign(new Error("वितरण रकम ऋण स्वीकृत रकमभन्दा बढी हुन मिल्दैन।"),{status:400});
+   if(!Number.isFinite(amount)||amount<=0||Math.abs(amount-Number(loan.principal))>0.009)throw Object.assign(new Error("स्वीकृत ऋण रकम बराबर नै वितरण गर्नुपर्छ, किनकि EMI स्वीकृतिको समयमा तयार भइसकेको छ।"),{status:400});
    const acc=await c.query("SELECT id FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[cashCode,"1101"]]);
    const map=Object.fromEntries(acc.rows.map(x=>[x.id,x.id]));const cash=acc.rows.find(x=>x.id); 
    const by=await c.query("SELECT account_code,id FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[cashCode,"1101"]]);
@@ -48,8 +54,7 @@ export async function PATCH(request,{params}){
    await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,$5),($1,$6,$3,0,$4,$5)",[v.rows[0].id,a["1101"],loan.member_id,amount,"ऋण वितरण",a[cashCode]]);
    await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,debit,narration) VALUES($1,$2,$3,COALESCE($4::date,CURRENT_DATE),'loan_disbursement',$5,$6)",[s.oid,loan.member_id,v.rows[0].id,b.date||null,amount,"ऋण वितरण "+loan.application_no]);
    await c.query("UPDATE loans SET status='disbursed',disbursed_on=COALESCE($2::date,CURRENT_DATE),disbursed_amount=$3 WHERE id=$1",[id,b.date||null,amount]);
-   const due=schedule(amount,Number(loan.annual_interest_rate),Number(loan.term_months),loan.interest_method,b.date||new Date().toISOString().slice(0,10));
-   for(const x of due)await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[id,x.no,x.date,x.principal,x.interest]);
+
    await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'out','loan_disbursement',$4,'voucher',$5,$6,$7,$8)",[s.oid,a[cashCode],b.date||null,amount,v.rows[0].id,voucherNo,"ऋण वितरण "+loan.application_no,s.uid||null]);
    return await finish(c,{ok:true,message:"ऋण वितरण भयो। Voucher: "+voucherNo, voucherNo});
   }else if(action==="repay"){
