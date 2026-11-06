@@ -38,7 +38,47 @@ export default function BhalaiKoshPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newId, setNewId] = useState("");
   const [notice, setNotice] = useState("Database बाट सदस्य विवरण लोड हुँदैछ।");
-  useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
+  const [depositYear, setDepositYear] = useState("2082");
+  const [depositMonth, setDepositMonth] = useState("1");
+  const [contributions, setContributions] = useState([]);
+  const [depositAmounts, setDepositAmounts] = useState({});
+  const [depositDates, setDepositDates] = useState({});
+  const [depositMethods, setDepositMethods] = useState({});
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [savingMemberId, setSavingMemberId] = useState(null);
+  const [annualRows, setAnnualRows] = useState([]);
+  const nepaliMonths = ["साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत","बैशाख","जेठ","असार"];
+  const loadMonthlyContributions = async () => {
+    setDepositLoading(true);
+    try {
+      const r = await fetch("/api/bhalai-kosh/contributions?year="+depositYear+"&month="+depositMonth);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "मासिक बचत विवरण ल्याउन सकिएन।");
+      setContributions(d.contributions || []);
+    } catch (e) { setNotice(e.message); }
+    finally { setDepositLoading(false); }
+  };
+  useEffect(() => {
+    if (authReady && active === "Deposits") loadMonthlyContributions();
+  }, [authReady, active, depositYear, depositMonth]);
+  const saveContribution = async (member) => {
+    const amount = Number(depositAmounts[member.dbId] ?? 1000);
+    if (!member.dbId || !Number.isFinite(amount) || amount <= 0) { setNotice("सही जम्मा रकम राख्नुहोस्।"); return; }
+    setSavingMemberId(member.dbId);
+    try {
+      const r = await fetch("/api/bhalai-kosh/contributions", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({memberId:member.dbId,year:Number(depositYear),month:Number(depositMonth),amount,paidOn:depositDates[member.dbId] || null,paymentMethod:depositMethods[member.dbId] || "cash"})});
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "जम्मा दर्ता गर्न सकिएन।");
+      setNotice("जम्मा सफल भयो। Cash/Bank Voucher नं.: "+d.voucherNo);
+      await loadMonthlyContributions();
+    } catch (e) { setNotice(e.message); }
+    finally { setSavingMemberId(null); }
+  };
+  const paidMemberIds = new Set(contributions.map(x => Number(x.member_id)));
+  const paidTotal = contributions.reduce((sum, x) => sum + Number(x.amount || 0), 0);
+  const activeMembers = members.filter(m => m.status === "Active" && m.dbId);
+
+  useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({dbId:m.id,id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
@@ -47,7 +87,7 @@ export default function BhalaiKoshPage() {
     try {
       const r=await fetch("/api/bhalai-kosh/members",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({memberCode:newId,fullName:newName,phone:newPhone})});
       const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य थप्न सकिएन।");
-      setMembers(prev=>[...prev,{id:d.member.member_code,name:d.member.full_name,phone:d.member.phone||"",joined:d.member.joined_on||"",savings:0,loan:0,status:"Active"}]);
+      setMembers(prev=>[...prev,{dbId:d.member.id,id:d.member.member_code,name:d.member.full_name,phone:d.member.phone||"",joined:d.member.joined_on||"",savings:0,loan:0,status:"Active"}]);
       setNewName("");setNewPhone("");setNewId("");setShowAdd(false);setNotice("नयाँ सदस्य Database मा सुरक्षित भयो।");
     } catch(e) { setNotice(e.message); }
   };
@@ -84,7 +124,28 @@ export default function BhalaiKoshPage() {
             <article className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="font-extrabold">कोष सञ्चालन नियम</h2><div className="mt-5 space-y-4 text-sm"><div className="flex justify-between border-b pb-3"><span className="text-slate-500">मासिक बचत</span><b>रु. १,०००</b></div><div className="flex justify-between border-b pb-3"><span className="text-slate-500">ऋण सीमा</span><b>उपलब्ध कोषअनुसार</b></div><div className="flex justify-between border-b pb-3"><span className="text-slate-500">किस्ता</span><b>मूलधन + ब्याज</b></div><div className="flex justify-between"><span className="text-slate-500">अतिरिक्त रकम</span><b>जरिवाना / Extra</b></div></div></article></div>
           </>}
           {active === "Members" && <article className="rounded-2xl border border-slate-200 bg-white p-5"><div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-extrabold">सदस्य निर्देशिका</h2><p className="mt-1 text-xs text-slate-400">Database मा सुरक्षित सदस्य सूची</p></div><div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="नाम वा Member ID खोज्नुहोस्" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-600 sm:w-72"/></div></div><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["Member ID","सदस्यको नाम","सम्पर्क","सदस्य बनेको","कुल बचत","बाँकी ऋण","स्थिति"].map(x=><th key={x} className="px-4 py-3 font-semibold">{x}</th>)}</tr></thead><tbody>{filtered.map(m=><tr key={m.id} className="border-b border-slate-100"><td className="px-4 py-4 font-bold text-emerald-800">{m.id}</td><td className="px-4 py-4 font-semibold">{m.name}</td><td className="px-4 py-4 text-slate-500">{m.phone}</td><td className="px-4 py-4">{m.joined}</td><td className="px-4 py-4 font-semibold">रु. {money(m.savings)}</td><td className="px-4 py-4">रु. {money(m.loan)}</td><td className="px-4 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{m.status}</span></td></tr>)}</tbody></table></div></article>}
-          {active === "Deposits" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">मासिक बचत संकलन</h2><p className="mt-2 text-sm text-slate-500">प्रत्येक सदस्यको अनिवार्य मासिक योगदान रु. १,०००। नेपाली आर्थिक वर्ष र महिनाअनुसार अभिलेख राख्ने।</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs text-emerald-700">प्रति सदस्य</p><b className="mt-1 block text-2xl">रु. १,०००</b></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">सदस्य संख्या</p><b className="mt-1 block text-2xl">{members.length}</b></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">यो महिनाको अपेक्षित बचत</p><b className="mt-1 block text-2xl">रु. {money(members.length*1000)}</b></div></div></article>}
+          {active === "Deposits" && <div className="space-y-5">
+            <article className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div><h2 className="font-extrabold">कर्मचारी मासिक बचत तथा Cash Voucher</h2><p className="mt-1 text-xs text-slate-500">वर्ष परिवर्तन गरेर नयाँ आर्थिक वर्षको मासिक अभिलेख अद्यावधिक गर्नुहोस्। प्रत्येक जम्मा गर्दा Cash/Bank Receipt Voucher र सदस्य Ledger स्वतः पोस्ट हुन्छ।</p></div>
+                <div className="flex flex-wrap gap-2">
+                  <label className="text-xs font-semibold text-slate-500">आर्थिक वर्ष (BS)<select value={depositYear} onChange={e=>setDepositYear(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800">{Array.from({length:12},(_,i)=>String(2080+i)).map(y=><option key={y} value={y}>{y}/{String(Number(y)+1).slice(-2)}</option>)}</select></label>
+                  <label className="text-xs font-semibold text-slate-500">महिना<select value={depositMonth} onChange={e=>setDepositMonth(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800">{nepaliMonths.map((m,i)=><option key={m} value={String(i+1)}>{m}</option>)}</select></label>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-4">
+                <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs text-emerald-700">प्रति कर्मचारी मासिक</p><b className="mt-1 block text-xl">रु. १,०००</b></div>
+                <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">सक्रिय कर्मचारी</p><b className="mt-1 block text-xl">{activeMembers.length}</b></div>
+                <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">जम्मा गरेका</p><b className="mt-1 block text-xl">{contributions.length}</b></div>
+                <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">यस महिनाको जम्मा</p><b className="mt-1 block text-xl">रु. {money(paidTotal)}</b></div>
+              </div>
+            </article>
+            <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <div className="flex flex-col justify-between gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center"><div><h3 className="font-extrabold">{depositYear}/{String(Number(depositYear)+1).slice(-2)} — {nepaliMonths[Number(depositMonth)-1]} बचत Sheet</h3><p className="mt-1 text-xs text-slate-500">जम्मा नभएको कर्मचारीको रकम भरेर Cash Voucher मार्फत दर्ता गर्नुहोस्।</p></div><button onClick={loadMonthlyContributions} className="rounded-lg border px-3 py-2 text-xs font-bold">Refresh</button></div>
+              {depositLoading ? <p className="p-8 text-center text-sm text-slate-500">विवरण लोड हुँदैछ…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[950px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["कर्मचारी नं.","कर्मचारीको नाम","जम्मा रकम","जम्मा मिति (AD)","भुक्तानी माध्यम","रसिद / Voucher","स्थिति","कार्य"].map(h=><th key={h} className="px-3 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{activeMembers.map(m=>{const paid=contributions.find(c=>Number(c.member_id)===Number(m.dbId));return <tr key={m.dbId} className="border-t border-slate-100"><td className="px-3 py-3 font-bold text-emerald-800">{m.id}</td><td className="px-3 py-3 font-semibold">{m.name}</td><td className="px-3 py-3">{paid?<b>रु. {money(paid.amount)}</b>:<input type="number" min="1" value={depositAmounts[m.dbId] ?? 1000} onChange={e=>setDepositAmounts(p=>({...p,[m.dbId]:e.target.value}))} className="w-28 rounded-lg border px-2 py-2"/>}</td><td className="px-3 py-3">{paid?String(paid.paid_on||"").slice(0,10):<input type="date" value={depositDates[m.dbId]||""} onChange={e=>setDepositDates(p=>({...p,[m.dbId]:e.target.value}))} className="rounded-lg border px-2 py-2"/>}</td><td className="px-3 py-3">{paid?(paid.payment_method||"cash"):<select value={depositMethods[m.dbId]||"cash"} onChange={e=>setDepositMethods(p=>({...p,[m.dbId]:e.target.value}))} className="rounded-lg border px-2 py-2"><option value="cash">Cash</option><option value="bank">Bank</option><option value="transfer">Transfer</option><option value="cheque">Cheque</option><option value="online">Online</option></select>}</td><td className="px-3 py-3 text-xs">{paid?.receipt_no||"—"}</td><td className="px-3 py-3">{paid?<span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">जम्मा भयो</span>:<span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700">बाँकी</span>}</td><td className="px-3 py-3">{paid?<span className="text-xs text-slate-400">Posted</span>:<button disabled={savingMemberId===m.dbId} onClick={()=>saveContribution(m)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{savingMemberId===m.dbId?"सेभ हुँदैछ…":"Cash Voucher बनाउनुहोस्"}</button>}</td></tr>})}</tbody></table></div>}
+            </article>
+            <p className="text-xs leading-5 text-slate-500">नोट: वर्ष र महिना BS अनुसार चयन हुन्छ। मिति प्रविष्टि AD मितिमा हुन्छ। पुरानो वर्षको विवरण हेर्न वर्ष परिवर्तन गर्नुहोस्। एउटै कर्मचारीको एउटै महिनाको दोहोरो जम्मा रोकिएको छ।</p>
+          </div>}
           {active === "Loans" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">ऋण आवेदन तथा स्वीकृति</h2><p className="mt-2 text-sm text-slate-500">ऋण उपलब्ध कोषको सीमा भित्र मात्र स्वीकृत गर्ने। ब्याजदर, अवधि र EMI तालिका स्वीकृतिपूर्व देखाउने।</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{["ऋण आवेदन","स्वीकृत ऋण","किस्ता तालिका"].map(x=><div key={x} className="rounded-xl border border-slate-200 p-4"><HandCoins className="text-emerald-700"/><p className="mt-3 font-bold">{x}</p><p className="mt-1 text-xs text-slate-400">Backend जडानपछि सक्रिय हुनेछ</p></div>)}</div></article>}
           {active === "Import" && <article className="rounded-2xl border border-dashed border-emerald-300 bg-white p-8 text-center"><FileSpreadsheet className="mx-auto text-emerald-700" size={34}/><h2 className="mt-4 font-extrabold">मासिक Excel / CSV Import</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">Employee ID, Name, Month, Monthly Deposit, EMI Amount र Penalty/Extra भएका फाइल अपलोड गरी Preview र Validation पछि मात्र Import गर्ने सुविधा।</p><label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"><Upload size={16}/> Excel / CSV छान्नुहोस्<input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e=>setNotice(e.target.files?.[0] ? e.target.files[0].name+" चयन भयो। Import Preview सुविधा backend चरणमा जडान हुनेछ।" : notice)}/></label></article>}
           {active === "Reports" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">वित्तीय प्रतिवेदन</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{["मासिक बचत प्रतिवेदन","वार्षिक कोष विवरण","सदस्यगत बचत विवरण","ऋण तथा बाँकी किस्ता","बैंक/नगद मिलान","जरिवाना तथा अतिरिक्त रकम"].map(x=><div key={x} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">{x}<Download size={16} className="text-slate-400"/></div>)}</div></article>}
