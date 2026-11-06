@@ -10,7 +10,7 @@ function schedule(principal,rate,term,method,start){
  const emi=method==="reducing_balance"&&monthlyRate>0?principal*monthlyRate/(1-Math.pow(1+monthlyRate,-term)):0;
  const startDate=new Date(String(start).slice(0,10)+"T12:00:00");
  for(let i=1;i<=term;i++){
-  const due=new Date(startDate);due.setMonth(due.getMonth()+i);
+  const due=new Date(startDate.getFullYear(),startDate.getMonth()+i,Math.min(startDate.getDate(),new Date(startDate.getFullYear(),startDate.getMonth()+i+1,0).getDate()),12,0,0);
   let interest=method==="flat"?principal*rate/100/12:balance*monthlyRate;
   let principalDue=method==="flat"?principal/term:(i===term?balance:emi-interest);
   principalDue=Math.min(balance,n(principalDue));interest=n(interest);balance=n(balance-principalDue);
@@ -70,8 +70,8 @@ export async function PATCH(request,{params}){
    const inst=await c.query("SELECT * FROM loan_installments WHERE loan_id=$1 AND status<>'paid' ORDER BY due_date,installment_no FOR UPDATE",[id]);
    for(const row of inst.rows){if(leftP<=0&&leftI<=0&&leftF<=0)break;const p=Math.min(leftP,Number(row.principal_due)-Number(row.paid_principal)),i=Math.min(leftI,Number(row.interest_due)-Number(row.paid_interest)),f=Math.min(leftF,Number(row.fee_due)-Number(row.paid_fee));leftP=n(leftP-p);leftI=n(leftI-i);leftF=n(leftF-f);await c.query("UPDATE loan_installments SET paid_principal=paid_principal+$2,paid_interest=paid_interest+$3,paid_fee=paid_fee+$4,status=CASE WHEN paid_principal+$2>=principal_due-0.009 AND paid_interest+$3>=interest_due-0.009 AND paid_fee+$4>=fee_due-0.009 THEN 'paid' ELSE 'partial' END WHERE id=$1",[row.id,p,i,f]);}
    await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'in','loan_repayment',$4,'loan_payment',$5,$6,$7,$8)",[s.oid,a[cashCode],b.date||null,total,pay.rows[0].id,voucherNo,"ऋण किस्ता "+loan.application_no,s.uid||null]);
-   const remain=await c.query("SELECT COALESCE(SUM(principal_due-paid_principal),0) AS p,COALESCE(SUM(interest_due-paid_interest),0) AS i FROM loan_installments WHERE loan_id=$1",[id]);
-   if(Number(remain.rows[0].p)<=0.009&&Number(remain.rows[0].i)<=0.009)await c.query("UPDATE loans SET status='closed' WHERE id=$1",[id]);
+   const remain=await c.query("SELECT COALESCE(SUM(principal_due-paid_principal),0) AS p,COALESCE(SUM(interest_due-paid_interest),0) AS i,COALESCE(SUM(fee_due-paid_fee),0) AS f FROM loan_installments WHERE loan_id=$1",[id]);
+   if(Number(remain.rows[0].p)<=0.009&&Number(remain.rows[0].i)<=0.009&&Number(remain.rows[0].f)<=0.009)await c.query("UPDATE loans SET status='closed' WHERE id=$1",[id]);
    return await finish(c,{ok:true,paymentId:pay.rows[0].id,voucherNo,message:"ऋण किस्ता दर्ता भयो। Receipt: "+voucherNo});
   }else throw Object.assign(new Error("अमान्य कार्य।"),{status:400});
   await c.query("COMMIT");return NextResponse.json({ok:true});
