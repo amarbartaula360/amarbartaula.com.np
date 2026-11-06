@@ -33,7 +33,7 @@ export default function FinanceWorkspace(){
    </div>)}</div>
    <button onClick={()=>setLines(p=>[...p,{accountId:"",memberId:"",debit:"",credit:""}])} className="mt-3 rounded-lg border px-3 py-2 text-xs font-bold">+ अर्को खाता लाइन</button>
    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4"><div className="text-sm"><b>Debit: रु. {fmt(totalDebit)}</b><span className="mx-3 text-slate-400">Credit: रु. {fmt(totalCredit)}</span><span className={Math.abs(totalDebit-totalCredit)<0.01?"text-emerald-700":"text-red-600"}>{Math.abs(totalDebit-totalCredit)<0.01?"बराबर":"बराबर छैन"}</span></div><button disabled={busy||Math.abs(totalDebit-totalCredit)>0.009||totalDebit<=0} onClick={submitVoucher} className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{busy?"पोस्ट हुँदैछ…":"Voucher पोस्ट गर्नुहोस्"}</button></div>
-   {tab==="payment"&&<p className="mt-2 text-xs text-slate-500">Payment Voucher मा Cash/Bank खाताको एउटा Debit लाइन र खर्च/सम्बन्धित खाताको Credit लाइन राख्नुहोस्।</p>}
+   {tab==="payment"&&<p className="mt-2 text-xs text-slate-500">Payment Voucher मा खर्च/सम्बन्धित खाताको Debit र Cash/Bank खाताको Credit लाइन राख्नुहोस्।</p>}
   </section>}
   {tab==="loans"&&<>
    <section className="rounded-2xl border bg-white p-5"><h2 className="font-extrabold">नयाँ ऋण आवेदन</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
