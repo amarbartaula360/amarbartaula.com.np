@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wallet, Users, Landmark, TrendingUp, Search, Plus, FileSpreadsheet, LayoutDashboard, HandCoins, BookOpen, BarChart3, Bell, Settings, Download, Upload, ChevronRight, Menu, X } from "lucide-react";
+import FinanceWorkspace from "../components/FinanceWorkspace";
 
 const initialMembers = [];
 
@@ -11,6 +12,7 @@ const navItems = [
   ["Overview", "ड्यासबोर्ड", LayoutDashboard],
   ["Members", "सदस्यहरू", Users],
   ["Deposits", "मासिक बचत", Wallet],
+  ["Finance", "Voucher तथा लेखा", BookOpen],
   ["Loans", "ऋण व्यवस्थापन", HandCoins],
   ["Import", "Excel Import", FileSpreadsheet],
   ["Reports", "प्रतिवेदन", BarChart3],
@@ -210,6 +212,7 @@ export default function BhalaiKoshPage() {
             </article>
             <p className="text-xs leading-5 text-slate-500">नोट: वर्ष र महिना BS अनुसार चयन हुन्छ। मिति प्रविष्टि AD मितिमा हुन्छ। पुरानो वर्षको विवरण हेर्न वर्ष परिवर्तन गर्नुहोस्। एउटै कर्मचारीको एउटै महिनाको दोहोरो जम्मा रोकिएको छ।</p>
           </div>}
+          {active === "Finance" && <FinanceWorkspace />}
           {active === "Loans" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">ऋण आवेदन तथा स्वीकृति</h2><p className="mt-2 text-sm text-slate-500">ऋण उपलब्ध कोषको सीमा भित्र मात्र स्वीकृत गर्ने। ब्याजदर, अवधि र EMI तालिका स्वीकृतिपूर्व देखाउने।</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{["ऋण आवेदन","स्वीकृत ऋण","किस्ता तालिका"].map(x=><div key={x} className="rounded-xl border border-slate-200 p-4"><HandCoins className="text-emerald-700"/><p className="mt-3 font-bold">{x}</p><p className="mt-1 text-xs text-slate-400">Backend जडानपछि सक्रिय हुनेछ</p></div>)}</div></article>}
           {active === "Import" && <article className="rounded-2xl border border-dashed border-emerald-300 bg-white p-8 text-center"><FileSpreadsheet className="mx-auto text-emerald-700" size={34}/><h2 className="mt-4 font-extrabold">मासिक Excel / CSV Import</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">Employee ID, Name, Month, Monthly Deposit, EMI Amount र Penalty/Extra भएका फाइल अपलोड गरी Preview र Validation पछि मात्र Import गर्ने सुविधा।</p><label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"><Upload size={16}/> Excel / CSV छान्नुहोस्<input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e=>setNotice(e.target.files?.[0] ? e.target.files[0].name+" चयन भयो। Import Preview सुविधा backend चरणमा जडान हुनेछ।" : notice)}/></label></article>}
           {active === "Reports" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">वित्तीय प्रतिवेदन</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{["मासिक बचत प्रतिवेदन","वार्षिक कोष विवरण","सदस्यगत बचत विवरण","ऋण तथा बाँकी किस्ता","बैंक/नगद मिलान","जरिवाना तथा अतिरिक्त रकम"].map(x=><div key={x} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">{x}<Download size={16} className="text-slate-400"/></div>)}</div></article>}
