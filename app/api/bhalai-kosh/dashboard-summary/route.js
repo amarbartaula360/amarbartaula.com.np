@@ -35,11 +35,17 @@ export async function GET() {
       `, [oid]),
       db.query(`
         SELECT a.id,a.account_name,a.account_type,a.opening_balance,
-          COALESCE(SUM(CASE WHEN t.direction='in' THEN t.amount ELSE -t.amount END),0) AS movement,
-          a.opening_balance+COALESCE(SUM(CASE WHEN t.direction='in' THEN t.amount ELSE -t.amount END),0) AS balance
-        FROM cash_bank_accounts a LEFT JOIN cash_bank_transactions t ON t.account_id=a.id AND t.organization_id=a.organization_id
+          ca.account_code,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit-vl.credit ELSE 0 END),0) AS movement,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit-vl.credit ELSE 0 END),0) AS balance
+        FROM cash_bank_accounts a
+        JOIN chart_of_accounts ca ON ca.organization_id=a.organization_id
+          AND ca.account_code=CASE WHEN a.account_type='cash' THEN '1001' WHEN a.account_type='bank' THEN '1002' ELSE '' END
+          AND ca.is_active=true
+        LEFT JOIN voucher_lines vl ON vl.account_id=ca.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=a.organization_id AND v.status='posted'
         WHERE a.organization_id=$1 AND a.is_active=true
-        GROUP BY a.id ORDER BY a.account_type,a.account_name
+        GROUP BY a.id,ca.id ORDER BY a.account_type,a.account_name
       `, [oid]),
       db.query(`
         SELECT COALESCE(SUM(CASE WHEN a.account_code='4001' THEN vl.credit-vl.debit ELSE 0 END),0) AS interest_income,
