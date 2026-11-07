@@ -5,6 +5,17 @@ export const runtime="nodejs";
 const roles=["admin","super_admin","accountant"];
 const n=x=>Number(Number(x||0).toFixed(2));
 const cashCode=m=>["bank","transfer","cheque","online"].includes(String(m||"cash"))?"1002":"1001";
+function makeSchedule(principal,rate,term,method,start){
+ const rows=[];let balance=principal,monthly=rate/1200;
+ const emi=method==="reducing_balance"&&monthly>0?principal*monthly/(1-Math.pow(1+monthly,-term)):0;
+ const base=new Date(String(start).slice(0,10)+"T12:00:00");
+ for(let i=1;i<=term;i++){const d=new Date(base.getFullYear(),base.getMonth()+i,Math.min(base.getDate(),new Date(base.getFullYear(),base.getMonth()+i+1,0).getDate()),12);
+  let interest=method==="flat"?principal*rate/1200:balance*monthly;
+  let p=method==="flat"?principal/term:(i===term?balance:emi-interest);
+  p=Math.min(balance,n(p));interest=n(interest);balance=n(balance-p);
+  rows.push({no:i,date:d.toISOString().slice(0,10),principal:n(p),interest});
+ }return rows;
+}
 export async function PATCH(request,{params}){
  const s=await getBhalaiKoshSession();if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
  if(!roles.includes(s.role))return NextResponse.json({error:"Permission denied"},{status:403});
@@ -85,7 +96,11 @@ export async function PATCH(request,{params}){
    await c.query("DELETE FROM voucher_lines WHERE voucher_id=$1",[voucherId]);
    await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,'ऋण वितरण'),($1,$5,$3,0,$4,'ऋण वितरण')",[voucherId,a["1101"],mid,amount,a[cashCode(method)]]);
    await c.query("UPDATE vouchers SET voucher_date=$1 WHERE id=$2",[date,voucherId]);
-   await c.query("UPDATE loans SET disbursed_on=$1,disbursed_amount=$2 WHERE id=$3",[date,amount,loanId]);
+   await c.query("UPDATE loans SET principal=$1,disbursed_on=$2,disbursed_amount=$1 WHERE id=$3",[amount,date,loanId]);
+   await c.query("DELETE FROM loan_installments WHERE loan_id=$1",[loanId]);
+   const approvedStart=loan.rows[0].approved_at?String(loan.rows[0].approved_at).slice(0,10):date;
+   for(const item of makeSchedule(amount,Number(loan.rows[0].annual_interest_rate),Number(loan.rows[0].term_months),loan.rows[0].interest_method,approvedStart))
+    await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[loanId,item.no,item.date,item.principal,item.interest]);
    if(ledger)await c.query("UPDATE member_ledger SET transaction_date=$1,debit=$2,credit=0 WHERE id=$3",[date,amount,ledger.id]);else await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,debit,narration) VALUES($1,$2,$3,$4,'loan_disbursement',$5,'ऋण वितरण')",[s.oid,mid,voucherId,date,amount]);
    const tx=await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3 WHERE organization_id=$4 AND source_type='voucher' AND source_id=$5 RETURNING id",[ca.rows[0].id,date,amount,s.oid,voucherId]);
    if(!tx.rowCount)await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'out','loan_disbursement',$4,'voucher',$5,$6,'ऋण वितरण',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,vr.rows[0].voucher_no,s.uid||null]);
