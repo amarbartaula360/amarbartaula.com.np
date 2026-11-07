@@ -102,7 +102,7 @@ export async function PATCH(request,{params}){
    for(const item of makeSchedule(amount,Number(loan.rows[0].annual_interest_rate),Number(loan.rows[0].term_months),loan.rows[0].interest_method,approvedStart))
     await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[loanId,item.no,item.date,item.principal,item.interest]);
    if(ledger)await c.query("UPDATE member_ledger SET transaction_date=$1,debit=$2,credit=0 WHERE id=$3",[date,amount,ledger.id]);else await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,debit,narration) VALUES($1,$2,$3,$4,'loan_disbursement',$5,'ऋण वितरण')",[s.oid,mid,voucherId,date,amount]);
-   const tx=await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3 WHERE organization_id=$4 AND source_type='voucher' AND source_id=$5 RETURNING id",[ca.rows[0].id,date,amount,s.oid,voucherId]);
+   const tx=await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='out',category='loan_disbursement',source_type='voucher',source_id=$5 WHERE organization_id=$4 AND source_type='voucher' AND source_id=$5 RETURNING id",[ca.rows[0].id,date,amount,s.oid,voucherId]);
    if(!tx.rowCount)await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'out','loan_disbursement',$4,'voucher',$5,$6,'ऋण वितरण',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,vr.rows[0].voucher_no,s.uid||null]);
    await c.query("COMMIT");return NextResponse.json({ok:true,message:"ऋण वितरण कारोबार सम्पादन भयो।"});
   }
@@ -136,8 +136,9 @@ export async function PATCH(request,{params}){
    await c.query("UPDATE vouchers SET voucher_date=$1 WHERE id=$2",[date,voucherId]);
    if(ledger)await c.query("UPDATE member_ledger SET transaction_date=$1,debit=0,credit=$2 WHERE id=$3",[date,total,ledger.id]);else await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,credit,narration) VALUES($1,$2,$3,$4,'loan_repayment',$5,'ऋण किस्ता प्राप्ति')",[s.oid,mid,voucherId,date,total]);
   }
-  const tx=await c.query("SELECT id FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='loan_payment' AND source_id=$2 FOR UPDATE",[s.oid,paymentId]);
-  if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='in' WHERE id=$4",[ca.rows[0].id,date,total,tx.rows[0].id]);
+  let tx=await c.query("SELECT id FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='loan_payment' AND source_id=$2 FOR UPDATE",[s.oid,paymentId]);
+  if(!tx.rowCount&&voucherId)tx=await c.query("SELECT id FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='voucher' AND source_id=$2 FOR UPDATE",[s.oid,voucherId]);
+  if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='in',category='loan_repayment',source_type='loan_payment',source_id=$5,reference_no=COALESCE(reference_no,$6),description='ऋण किस्ता' WHERE id=$4",[ca.rows[0].id,date,total,tx.rows[0].id,paymentId,payment.receipt_no]);
   else await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'in','loan_repayment',$4,'loan_payment',$5,$6,'ऋण किस्ता',$7)",[s.oid,ca.rows[0].id,date,total,paymentId,payment.receipt_no,s.uid||null]);
   // Rebuild installment allocations from all payments in date order.
   const installments=await c.query("SELECT * FROM loan_installments WHERE loan_id=$1 ORDER BY due_date,installment_no FOR UPDATE",[loanId]);
