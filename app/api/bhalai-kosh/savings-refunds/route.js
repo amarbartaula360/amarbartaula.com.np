@@ -13,10 +13,10 @@ export async function GET(){
     const [members,refunds]=await Promise.all([
       db.query(`
         SELECT m.id,m.member_code,m.full_name,
-          GREATEST(0,COALESCE(s.total_savings,0)-COALESCE(r.total_refunded,0)) AS current_saving
+          GREATEST(0,COALESCE(s.total_savings,0)-COALESCE(r.total_deducted,0)) AS current_saving
         FROM members m
         LEFT JOIN LATERAL (SELECT SUM(amount) total_savings FROM savings WHERE organization_id=m.organization_id AND member_id=m.id AND status='posted') s ON TRUE
-        LEFT JOIN LATERAL (SELECT SUM(amount) total_refunded FROM deposits WHERE organization_id=m.organization_id AND member_id=m.id AND transaction_type='refund') r ON TRUE
+        LEFT JOIN LATERAL (SELECT SUM(amount) total_deducted FROM deposits WHERE organization_id=m.organization_id AND member_id=m.id AND transaction_type IN ('refund','loan_settlement')) r ON TRUE
         WHERE m.organization_id=$1 AND m.status='active'
         ORDER BY m.full_name
       `,[s.oid]),
@@ -48,7 +48,7 @@ export async function POST(request){
     const bal=await c.query(`
       SELECT GREATEST(0,
         COALESCE((SELECT SUM(amount) FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted'),0)
-        - COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type='refund'),0)
+        - COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type IN ('refund','loan_settlement')),0)
       ) AS available
     `,[s.oid,memberId]);
     const available=Number(bal.rows[0]?.available||0);
@@ -97,7 +97,7 @@ export async function PATCH(request){
     const dr=await c.query("SELECT * FROM deposits WHERE id=$1 AND organization_id=$2 AND transaction_type='refund' FOR UPDATE",[id,s.oid]);
     if(!dr.rowCount)throw Object.assign(new Error("बचत फिर्ता रेकर्ड भेटिएन।"),{status:404});
     const old=dr.rows[0],memberId=Number(old.member_id);
-    const bal=await c.query("SELECT GREATEST(0,COALESCE((SELECT SUM(amount) FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted'),0)-COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type='refund' AND id<>$3),0)) available",[s.oid,memberId,id]);
+    const bal=await c.query("SELECT GREATEST(0,COALESCE((SELECT SUM(amount) FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted'),0)-COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type IN ('refund','loan_settlement') AND id<>$3),0)) available",[s.oid,memberId,id]);
     if(amount>Number(bal.rows[0].available||0))throw Object.assign(new Error("सम्पादनपछि फिर्ता रकम हाल कायम बचतभन्दा बढी हुन मिल्दैन।"),{status:400});
     const cashCode=methodCode(method),accountType=cashCode==="1002"?"bank":"cash";
     const acc=await c.query("SELECT id,account_code FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[cashCode,"2001"]]);
