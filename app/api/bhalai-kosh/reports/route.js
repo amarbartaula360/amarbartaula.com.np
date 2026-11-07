@@ -81,7 +81,7 @@ export async function GET(request) {
         ) all_savings ON TRUE
         LEFT JOIN LATERAL (
           SELECT COALESCE(SUM(d.amount),0) AS total_refunded
-          FROM deposits d WHERE d.organization_id=m.organization_id AND d.member_id=m.id AND d.transaction_type='refund'
+          FROM deposits d WHERE d.organization_id=m.organization_id AND d.member_id=m.id AND d.transaction_type IN ('refund','loan_settlement')
         ) refunds ON TRUE
         WHERE m.organization_id=$1
           AND GREATEST(0,COALESCE(all_savings.total_deposited,0)-COALESCE(refunds.total_refunded,0)) > 0
