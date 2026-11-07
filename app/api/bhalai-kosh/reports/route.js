@@ -43,10 +43,10 @@ export async function GET(request) {
       `,[oid,from,to]),
       db.query(`
         SELECT a.account_name,a.account_type,a.opening_balance,
-          COALESCE(SUM(CASE WHEN t.direction='in' THEN t.amount ELSE 0 END),0) AS total_in,
-          COALESCE(SUM(CASE WHEN t.direction='out' THEN t.amount ELSE 0 END),0) AS total_out,
-          a.opening_balance+COALESCE(SUM(CASE WHEN t.direction='in' THEN t.amount WHEN t.direction='out' THEN -t.amount ELSE 0 END),0) AS balance
-        FROM cash_bank_accounts a LEFT JOIN cash_bank_transactions t ON t.account_id=a.id AND t.organization_id=a.organization_id AND ${range('t.transaction_date')}
+          COALESCE(SUM(CASE WHEN t.direction='in' AND ${range('t.transaction_date')} THEN t.amount ELSE 0 END),0) AS total_in,
+          COALESCE(SUM(CASE WHEN t.direction='out' AND ${range('t.transaction_date')} THEN t.amount ELSE 0 END),0) AS total_out,
+          a.opening_balance+COALESCE(SUM(CASE WHEN t.direction='in' AND t.transaction_date<=COALESCE($3::date,'9999-12-31'::date) THEN t.amount WHEN t.direction='out' AND t.transaction_date<=COALESCE($3::date,'9999-12-31'::date) THEN -t.amount ELSE 0 END),0) AS balance
+        FROM cash_bank_accounts a LEFT JOIN cash_bank_transactions t ON t.account_id=a.id AND t.organization_id=a.organization_id
         WHERE a.organization_id=$1 AND a.is_active=true
         GROUP BY a.id ORDER BY a.account_type,a.account_name
       `,[oid,from,to]),
