@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wallet, Users, Landmark, TrendingUp, Search, Plus, FileSpreadsheet, LayoutDashboard, HandCoins, BookOpen, BarChart3, Bell, Settings, Download, Upload, ChevronRight, Menu, X } from "lucide-react";
 import FinanceWorkspace from "../components/FinanceWorkspace";
+import NepaliDate from "nepali-date-converter";
 
 const initialMembers = [];
 
@@ -19,6 +20,12 @@ const navItems = [
 ];
 
 const money = (n) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+const toBsDate = (value) => {
+  if (!value) return "—";
+  const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return "—";
+  return new NepaliDate(new Date(year, month - 1, day, 12)).format("YYYY-MM-DD").replace(/\\d/g, digit => "०१२३४५६७८९"[Number(digit)]);
+};
 
 export default function BhalaiKoshPage() {
   const router = useRouter();
@@ -61,7 +68,7 @@ export default function BhalaiKoshPage() {
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerError, setLedgerError] = useState("");
-  const nepaliMonths = ["साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत","बैशाख","जेठ","असार"];
+  const nepaliMonths = ["बैशाख","जेठ","असार","साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत"];
   const loadMonthlyContributions = async () => {
     setDepositLoading(true);
     try {
@@ -256,7 +263,7 @@ export default function BhalaiKoshPage() {
             <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600"><span>अघिल्लो बाँकी (Opening Balance): <b className="text-slate-900">रु. {money(ledgerData.openingBalance||0)}</b></span><span>फिल्टरपछि अन्तिम Balance: <b className="text-emerald-800">रु. {money(ledgerData.closingBalance||0)}</b></span></div>
             <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति (ई.सं.)</th><th className="px-4 py-3">नेपाली मिति (वि.सं.)</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
-              <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? String(row.transaction_date).slice(0,10) : "—"}</td><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? new Date(String(row.transaction_date).slice(0,10)+"T12:00:00").toLocaleDateString("ne-NP-u-ca-bikram") : "—"}</td><td className="px-4 py-3">{({contribution:"मासिक बचत",saving:"मासिक बचत",refund:"बचत फिर्ता",loan_disbursement:"ऋण वितरण",loan_repayment:"ऋण किस्ता"})[row.transaction_type]||row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td></tr>)}
+              <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? String(row.transaction_date).slice(0,10) : "—"}</td><td className="px-4 py-3 whitespace-nowrap">{toBsDate(row.transaction_date)}</td><td className="px-4 py-3">{({contribution:"मासिक बचत",saving:"मासिक बचत",refund:"बचत फिर्ता",loan_disbursement:"ऋण वितरण",loan_repayment:"ऋण किस्ता"})[row.transaction_type]||row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td></tr>)}
                 {!ledgerData.transactions?.length && <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400">यस सदस्यको Ledger मा कारोबार भेटिएन। पहिले Opening Balance वा बचत कारोबार दर्ता गर्नुहोस्।</td></tr>}
               </tbody></table></div></>}
             {!ledgerMemberId && !ledgerLoading && <div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Ledger हेर्न माथिबाट सदस्य चयन गर्नुहोस्।</div>}
