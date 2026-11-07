@@ -86,6 +86,9 @@ export default function BhalaiKoshPage() {
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerError, setLedgerError] = useState("");
+  const [ledgerEditRow,setLedgerEditRow]=useState(null);
+  const [ledgerEditForm,setLedgerEditForm]=useState({});
+  const [ledgerEditBusy,setLedgerEditBusy]=useState(false);
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [reportFromBs, setReportFromBs] = useState("2081-07-01");
@@ -214,6 +217,34 @@ export default function BhalaiKoshPage() {
     loadLedger();
     return () => controller.abort();
   }, [authReady, active, ledgerMemberId, ledgerAppliedFromBs, ledgerAppliedToBs]);
+  const latinDigits=value=>String(value??"").replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d));
+  const startLedgerEdit=row=>{
+    const type=row.transaction_type;
+    setLedgerEditRow(row);
+    setLedgerEditForm({
+      date:latinDigits(toBsDate(row.transaction_date)),
+      amount:String(type==="loan_disbursement"?(row.disbursed_amount||row.debit||0):(row.saving_amount||row.credit||0)),
+      principalAmount:String(row.principal_amount||0),interestAmount:String(row.interest_amount||0),feeAmount:String(row.fee_amount||0),
+      paymentMethod:row.payment_method||row.saving_method||row.disbursement_method||"cash"
+    });
+  };
+  const saveLedgerEdit=async()=>{
+    if(!ledgerEditRow)return;
+    setLedgerEditBusy(true);
+    try{
+      const date=bsToAdDate(ledgerEditForm.date);
+      const type=ledgerEditRow.transaction_type;
+      const payload={transactionType:type,date,paymentMethod:ledgerEditForm.paymentMethod};
+      if(type==="loan_repayment")Object.assign(payload,{principalAmount:Number(ledgerEditForm.principalAmount),interestAmount:Number(ledgerEditForm.interestAmount),feeAmount:Number(ledgerEditForm.feeAmount)});
+      else payload.amount=Number(ledgerEditForm.amount);
+      const response=await fetch("/api/bhalai-kosh/ledger/"+encodeURIComponent(ledgerMemberId)+"/"+encodeURIComponent(ledgerEditRow.id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||"Ledger सम्पादन गर्न सकिएन।");
+      const params=new URLSearchParams();if(ledgerAppliedFromBs.trim())params.set("fromBs",ledgerAppliedFromBs.trim());if(ledgerAppliedToBs.trim())params.set("toBs",ledgerAppliedToBs.trim());
+      const fresh=await fetch("/api/bhalai-kosh/ledger/"+encodeURIComponent(ledgerMemberId)+"?"+params.toString());const freshData=await fresh.json();if(!fresh.ok)throw new Error(freshData.error||"अपडेट गरिएको Ledger ल्याउन सकिएन।");
+      setLedgerData(freshData);setLedgerEditRow(null);setNotice(data.message||"Ledger कारोबार अपडेट भयो।");
+      if(active==="Overview"){const sr=await fetch("/api/bhalai-kosh/dashboard-summary");if(sr.ok)setDashboardSummary(await sr.json());}
+    }catch(e){setLedgerError(e.message);}finally{setLedgerEditBusy(false);}
+  };
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
@@ -395,15 +426,25 @@ export default function BhalaiKoshPage() {
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600"><span>अघिल्लो बाँकी (Opening Balance): <b className="text-slate-900">रु. {money(ledgerData.openingBalance||0)}</b></span><span>फिल्टरपछि अन्तिम Balance: <b className="text-emerald-800">रु. {money(ledgerData.closingBalance||0)}</b></span></div>
             <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति (ई.सं.)</th><th className="px-4 py-3">नेपाली मिति (वि.सं.)</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
-              <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? String(row.transaction_date).slice(0,10) : "—"}</td><td className="px-4 py-3 whitespace-nowrap">{toBsDate(row.transaction_date)}</td><td className="px-4 py-3">{({contribution:"मासिक बचत",saving:"मासिक बचत",refund:"बचत फिर्ता",loan_disbursement:"ऋण वितरण",loan_repayment:"ऋण किस्ता"})[row.transaction_type]||row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td></tr>)}
-                {!ledgerData.transactions?.length && <tr><td colSpan="7" className="px-4 py-8 text-center text-slate-400">यस सदस्यको Ledger मा कारोबार भेटिएन। पहिले Opening Balance वा बचत कारोबार दर्ता गर्नुहोस्।</td></tr>}
+              <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति (ई.सं.)</th><th className="px-4 py-3">नेपाली मिति (वि.सं.)</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th><th className="px-4 py-3 text-center">कार्य</th></tr></thead>
+              <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? String(row.transaction_date).slice(0,10) : "—"}</td><td className="px-4 py-3 whitespace-nowrap">{toBsDate(row.transaction_date)}</td><td className="px-4 py-3">{({contribution:"मासिक बचत",saving:"मासिक बचत",refund:"बचत फिर्ता",loan_disbursement:"ऋण वितरण",loan_repayment:"ऋण किस्ता"})[row.transaction_type]||row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td><td className="px-4 py-3 text-center">{["contribution","saving","loan_disbursement","loan_repayment"].includes(row.transaction_type)&&<button onClick={()=>startLedgerEdit(row)} className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50">Edit</button>}</td></tr>)}
+                {!ledgerData.transactions?.length && <tr><td colSpan="8" className="px-4 py-8 text-center text-slate-400">यस सदस्यको Ledger मा कारोबार भेटिएन। पहिले Opening Balance वा बचत कारोबार दर्ता गर्नुहोस्।</td></tr>}
               </tbody></table></div></>}
             {!ledgerMemberId && !ledgerLoading && <div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Ledger हेर्न माथिबाट सदस्य चयन गर्नुहोस्।</div>}
           </article>}
           {active === "Settings" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">कोष सेटिङ</h2><p className="mt-2 text-sm text-slate-500">मासिक बचत रकम, ब्याज गणना विधि, ऋण अवधि, जरिवाना नियम र वित्तीय वर्ष सेट गर्ने सुविधा।</p></article>}
         </section>
       </div>
+      {ledgerEditRow&&<div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/60 p-4"><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black">Ledger कारोबार सम्पादन</h2><p className="text-xs text-slate-500">{({contribution:"मासिक बचत",saving:"मासिक बचत",loan_disbursement:"ऋण वितरण",loan_repayment:"EMI किस्ता"})[ledgerEditRow.transaction_type]}</p></div><button onClick={()=>setLedgerEditRow(null)} className="rounded-lg border px-3 py-1.5 text-sm">बन्द</button></div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-slate-600">मिति (वि.सं. YYYY-MM-DD)<input value={ledgerEditForm.date||""} onChange={e=>setLedgerEditForm(v=>({...v,date:latinDigits(e.target.value)}))} placeholder="२०८३-०७-२०" className="mt-1 w-full rounded-lg border p-2.5 text-sm"/></label>
+          {ledgerEditRow.transaction_type!=="loan_repayment"&&<label className="text-xs font-semibold text-slate-600">रकम (रु.)<input type="number" min="0.01" step="0.01" value={ledgerEditForm.amount||""} onChange={e=>setLedgerEditForm(v=>({...v,amount:e.target.value}))} className="mt-1 w-full rounded-lg border p-2.5 text-sm"/></label>}
+          {ledgerEditRow.transaction_type==="loan_repayment"&&<>{[["principalAmount","साँवा"],["interestAmount","ब्याज"],["feeAmount","जरिवाना/शुल्क"]].map(([key,label])=><label key={key} className="text-xs font-semibold text-slate-600">{label}<input type="number" min="0" step="0.01" value={ledgerEditForm[key]||""} onChange={e=>setLedgerEditForm(v=>({...v,[key]:e.target.value}))} className="mt-1 w-full rounded-lg border p-2.5 text-sm"/></label>)}</>}
+          <label className="text-xs font-semibold text-slate-600">कारोबार माध्यम<select value={ledgerEditForm.paymentMethod||"cash"} onChange={e=>setLedgerEditForm(v=>({...v,paymentMethod:e.target.value}))} className="mt-1 w-full rounded-lg border p-2.5 text-sm"><option value="cash">नगद (Cash)</option><option value="bank">बैंक (Bank)</option></select></label>
+        </div>
+        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">सुरक्षित गरेपछि सम्बन्धित Voucher, सदस्य Ledger, Cash/Bank कारोबार र EMI किस्ता तालिका पनि मिलाइनेछ।</p>
+        <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setLedgerEditRow(null)} className="rounded-lg border px-4 py-2 text-sm">रद्द</button><button disabled={ledgerEditBusy} onClick={saveLedgerEdit} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{ledgerEditBusy?"अपडेट हुँदैछ…":"परिवर्तन सुरक्षित गर्नुहोस्"}</button></div>
+      </div></div>}
       {editingMember && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black">कर्मचारी विवरण सम्पादन</h2><p className="text-xs text-slate-500">आवश्यक विवरण परिवर्तन गरी Update गर्नुहोस्।</p></div><button onClick={()=>setEditingMember(null)} className="rounded-lg p-2 hover:bg-slate-100"><X size={18}/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2">{[
 ["memberCode","कर्मचारी कोड *"],["fullName","पूरा नाम *"],["nepaliName","नेपाली नाम"],["phone","फोन नम्बर"],["email","इमेल"],["gender","लिङ्ग"],["dateOfBirth","जन्ममिति"],["joinedOn","नियुक्ति/सदस्य मिति"],["designation","पद"],["department","विभाग"],["citizenshipNo","नागरिकता नं."],["address","ठेगाना"],["bankName","बैंकको नाम"],["bankBranch","बैंक शाखा"],["bankAccountName","खातावालाको नाम"],["bankAccountNo","बैंक खाता नं."],["emergencyContact","आपत्कालीन सम्पर्क"],["notes","कैफियत"]
 ].map(([key,label])=><label key={key} className="text-xs font-semibold text-slate-600">{label}<input type={["dateOfBirth","joinedOn"].includes(key)?"date":"text"} value={memberForm[key]||""} onChange={e=>setMemberForm(v=>({...v,[key]:e.target.value}))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-normal"/></label>)}<label className="text-xs font-semibold text-slate-600">स्थिति<select value={memberForm.status||"active"} onChange={e=>setMemberForm(v=>({...v,status:e.target.value}))} className="mt-1 w-full rounded-lg border px-3 py-2.5 text-sm"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option><option value="left">Left</option></select></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditingMember(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold">रद्द</button><button disabled={memberBusy} onClick={updateMember} className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{memberBusy?"सेभ हुँदैछ…":"परिवर्तन सुरक्षित गर्नुहोस्"}</button></div></div></div>}
