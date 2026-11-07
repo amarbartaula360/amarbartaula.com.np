@@ -97,6 +97,7 @@ export async function PATCH(request){
     const dr=await c.query("SELECT * FROM deposits WHERE id=$1 AND organization_id=$2 AND transaction_type='refund' FOR UPDATE",[id,s.oid]);
     if(!dr.rowCount)throw Object.assign(new Error("बचत फिर्ता रेकर्ड भेटिएन।"),{status:404});
     const old=dr.rows[0],memberId=Number(old.member_id);
+    await c.query("SELECT id FROM members WHERE id=$1 AND organization_id=$2 FOR UPDATE",[memberId,s.oid]);
     const bal=await c.query("SELECT GREATEST(0,COALESCE((SELECT SUM(amount) FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted'),0)-COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type IN ('refund','loan_settlement') AND id<>$3),0)) available",[s.oid,memberId,id]);
     if(amount>Number(bal.rows[0].available||0))throw Object.assign(new Error("सम्पादनपछि फिर्ता रकम हाल कायम बचतभन्दा बढी हुन मिल्दैन।"),{status:400});
     const cashCode=methodCode(method),accountType=cashCode==="1002"?"bank":"cash";
