@@ -32,7 +32,7 @@ export async function PATCH(request,{params}){
    if(loan.status!=="pending")throw Object.assign(new Error("Pending आवेदन मात्र स्वीकृत गर्न मिल्छ।"),{status:409});
    const approvedOn=String(b.approvedOn||new Date().toISOString().slice(0,10));
    if(!/^\d{4}-\d{2}-\d{2}$/.test(approvedOn))throw Object.assign(new Error("स्वीकृति मिति सही राख्नुहोस्।"),{status:400});
-   await c.query("UPDATE loans SET status='approved',approved_on=$2::date,approved_by=$3,approved_at=now() WHERE id=$1",[id,approvedOn,s.uid||null]);
+   await c.query("UPDATE loans SET status='approved',approved_by=$2,approved_at=($3::date::timestamp AT TIME ZONE 'UTC') WHERE id=$1",[id,s.uid||null,approvedOn]);
    // स्वीकृत भएको मितिको अर्को महिनादेखि EMI तालिका बनाउने।
    const due=schedule(Number(loan.principal),Number(loan.annual_interest_rate),Number(loan.term_months),loan.interest_method,approvedOn);
    for(const x of due)await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[id,x.no,x.date,x.principal,x.interest]);
