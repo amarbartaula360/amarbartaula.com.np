@@ -10,7 +10,7 @@ export async function GET(request) {
     const url = new URL(request.url);
     const from = url.searchParams.get("from") || null;
     const to = url.searchParams.get("to") || null;
-    const validDate = value => !value || /^\\d{4}-\\d{2}-\\d{2}$/.test(value);
+    const validDate = value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!validDate(from) || !validDate(to) || (from && to && from > to)) {
       return NextResponse.json({ error: "मिति दायरा सही राख्नुहोस्।" }, { status: 400 });
     }
