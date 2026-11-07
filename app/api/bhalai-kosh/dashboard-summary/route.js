@@ -30,7 +30,7 @@ export async function GET() {
       db.query(`
         SELECT GREATEST(0,
           COALESCE((SELECT SUM(s.amount) FROM savings s WHERE s.organization_id=$1 AND s.status='posted'),0)
-          - COALESCE((SELECT SUM(d.amount) FROM deposits d WHERE d.organization_id=$1 AND d.transaction_type='refund'),0)
+          - COALESCE((SELECT SUM(d.amount) FROM deposits d WHERE d.organization_id=$1 AND d.transaction_type IN ('refund','loan_settlement')),0)
         ) AS total_savings
       `, [oid]),
       db.query(`
