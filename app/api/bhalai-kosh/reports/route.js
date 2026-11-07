@@ -163,7 +163,7 @@ export async function GET(request) {
     const accountList = await db.query("SELECT id,account_code,account_name,account_type FROM chart_of_accounts WHERE organization_id=$1 AND is_active=true ORDER BY account_code",[oid]);
     return NextResponse.json({accountList:accountList.rows,filters:{from,to},loanPortfolio:portfolio.rows,loanPayments:payments.rows,savingsByPeriod:savings.rows,memberSavings:memberSavings.rows,annualSavings:annualSavings.rows,incomeStatement:incomeStatement.rows,accountingLedger:accountingLedger.rows,cashBank:cash.rows,vouchers:vouchers.rows,summary:summary.rows[0]||{},trialBalance:trialBalance.rows,balanceSheet});
   } catch (error) {
-    console.error("Bhalai reports:", error);
-    return NextResponse.json({ error: "वित्तीय प्रतिवेदन ल्याउन सकिएन।" }, { status: 500 });
+    console.error("Bhalai reports:", { message: error?.message, code: error?.code, detail: error?.detail, stack: error?.stack });
+    return NextResponse.json({ error: "वित्तीय प्रतिवेदन ल्याउन सकिएन।", detail: error?.message || "अज्ञात database त्रुटि", code: error?.code || null }, { status: 500 });
   }
 }
