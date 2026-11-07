@@ -88,6 +88,39 @@ export async function PATCH(request,{params}){
 
    await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'out','loan_disbursement',$4,'voucher',$5,$6,$7,$8)",[s.oid,cashAccount.rows[0].id,b.date||null,amount,v.rows[0].id,voucherNo,"ऋण वितरण "+loan.application_no,s.uid||null]);
    return await finish(c,{ok:true,message:"ऋण वितरण भयो। Voucher: "+voucherNo, voucherNo});
+  }else if(action==="close_loan"){
+   if(loan.status!=="disbursed")throw Object.assign(new Error("वितरण भएको खुला ऋण मात्र बन्द गर्न मिल्छ।"),{status:409});
+   const method=String(b.paymentMethod||"cash");
+   if(!["cash","bank"].includes(method))throw Object.assign(new Error("नगद वा बैंक माध्यम छान्नुहोस्।"),{status:400});
+   const continueSaving=!!b.continueSaving;
+   const remain=await c.query(`SELECT
+     COALESCE(SUM(principal_due-paid_principal),0) AS principal,
+     COALESCE(SUM(interest_due-paid_interest),0) AS interest,
+     COALESCE(SUM(fee_due-paid_fee),0) AS fee
+     FROM loan_installments WHERE loan_id=$1`,[id]);
+   const principal=n(remain.rows[0].principal),interest=n(remain.rows[0].interest),fee=n(remain.rows[0].fee);
+   if(principal<=0.009&&interest<=0.009&&fee<=0.009)throw Object.assign(new Error("यस ऋणमा बाँकी रकम छैन।"),{status:409});
+   if(fee>0.009)throw Object.assign(new Error("यस ऋणमा जरिवाना रु. "+fee+" बाँकी छ। पहिले जरिवाना मिलाउनुहोस्।"),{status:409});
+   const total=n(principal+interest);
+   const code=method==="bank"?"1002":"1001";
+   const acc=await c.query("SELECT account_code,id FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[code,"1101","4001"]]);
+   const a=Object.fromEntries(acc.rows.map(x=>[x.account_code,x.id]));
+   if(!a[code]||!a["1101"]||(interest>0&&!a["4001"]))throw Object.assign(new Error("Cash/Bank, Loan Receivable वा Interest Income खाता उपलब्ध छैन।"),{status:400});
+   const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,method]);
+   if(!cash.rowCount)throw Object.assign(new Error(method==="bank"?"सक्रिय Bank Account उपलब्ध छैन।":"सक्रिय Cash Account उपलब्ध छैन।"),{status:400});
+   const voucherNo="BK-RC-CLOSE-"+Date.now();
+   const v=await c.query(`INSERT INTO vouchers(organization_id,voucher_no,voucher_type,voucher_date,narration,reference_type,reference_id,status,created_by,posted_at)
+     VALUES($1,$2,'receipt',CURRENT_DATE,$3,'loan_close',$4,'posted',$5,now()) RETURNING id`,[s.oid,voucherNo,"ऋण पूर्ण भुक्तानी तथा बन्द: "+loan.application_no,id,s.uid||null]);
+   await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,'ऋण बन्द भुक्तानी'),($1,$5,$3,0,$6,'बाँकी साँवा')",[v.rows[0].id,a[code],loan.member_id,total,a["1101"],principal]);
+   if(interest>0)await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,0,$4,'बाँकी ब्याज आम्दानी')",[v.rows[0].id,a["4001"],loan.member_id,interest]);
+   const pay=await c.query(`INSERT INTO loan_payments(organization_id,loan_id,member_id,paid_on,principal_amount,interest_amount,fee_amount,payment_method,receipt_no,received_by,notes)
+     VALUES($1,$2,$3,CURRENT_DATE,$4,$5,0,$6,$7,$8,$9) RETURNING id`,[s.oid,id,loan.member_id,principal,interest,method,voucherNo,s.uid||null,"ऋण पूर्ण बन्द"]);
+   await c.query("UPDATE loan_installments SET paid_principal=principal_due,paid_interest=interest_due,paid_fee=fee_due,status='paid' WHERE loan_id=$1",[id]);
+   await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,credit,narration) VALUES($1,$2,$3,CURRENT_DATE,'loan_repayment',$4,$5)",[s.oid,loan.member_id,v.rows[0].id,total,"ऋण पूर्ण बन्द "+loan.application_no]);
+   await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,CURRENT_DATE,'in','loan_repayment',$3,'loan_payment',$4,$5,$6,$7)",[s.oid,cash.rows[0].id,total,pay.rows[0].id,voucherNo,"ऋण बन्द "+loan.application_no,s.uid||null]);
+   await c.query("UPDATE members SET continue_saving=$2,updated_at=now() WHERE id=$1 AND organization_id=$3",[loan.member_id,continueSaving,s.oid]);
+   await c.query("UPDATE loans SET status='closed' WHERE id=$1",[id]);
+   return await finish(c,{ok:true,voucherNo,total,principal,interest,continueSaving,message:"ऋण बन्द भयो। Voucher: "+voucherNo+(continueSaving?" — सदस्यको बचत जारी रहनेछ।":" — सदस्यको बचत जारी नरहने गरी सेट भयो।")});
   }else if(action==="repay"){
    if(!["disbursed","closed"].includes(loan.status)||loan.status==="closed")throw Object.assign(new Error("वितरण भएको खुला ऋणमा मात्र किस्ता लिन मिल्छ।"),{status:409});
    const principal=n(b.principalAmount||0),interest=n(b.interestAmount||0),fee=n(b.feeAmount||0),total=n(principal+interest+fee);
