@@ -41,7 +41,7 @@ const reportConfigs = {
   memberSavings: { label:"सदस्यगत बचत तथा Current Deposit", columns:[["member_code","सदस्य नं."],["full_name","सदस्यको नाम"],["deposit_count","जम्मा पटक"],["total_savings","छानिएको अवधिको बचत"],["current_deposit","Current Deposit (हाल कायम बचत)"]] },
   annualSavings: { label:"वार्षिक कोष विवरण", columns:[["period_year","वि.सं. वर्ष"],["member_count","सदस्य संख्या"],["deposit_count","जम्मा संख्या"],["total_savings","वार्षिक बचत"]] },
   incomeStatement: { label:"आम्दानी तथा खर्च", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","प्रकार"],["net_amount","कुल रकम"]] },
-  trialBalance: { label:"Trial Balance (तलबी परीक्षण)", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","खाता प्रकार"],["total_debit","कुल Debit"],["total_credit","कुल Credit"],["debit_balance","Debit Balance"],["credit_balance","Credit Balance"]] },
+  trialBalance: { label:"Trial Balance (परीक्षण सन्तुलन)", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","खाता प्रकार"],["total_debit","कुल Debit"],["total_credit","कुल Credit"],["debit_balance","Debit Balance"],["credit_balance","Credit Balance"]] },
   balanceSheet: { label:"Balance Sheet (वासलात)", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","खाता प्रकार"],["balance","मौज्दात"]] }
 };
 
