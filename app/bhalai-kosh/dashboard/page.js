@@ -26,6 +26,19 @@ const toBsDate = (value) => {
   if (!year || !month || !day) return "—";
   return new NepaliDate(new Date(year, month - 1, day, 12)).format("YYYY-MM-DD").replace(/\\d/g, digit => "०१२३४५६७८९"[Number(digit)]);
 };
+const bsToAdDate = (value) => {
+  if (!value) return "";
+  const date = new NepaliDate(String(value).trim()).toJsDate();
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new Error("वि.सं. मिति YYYY-MM-DD ढाँचामा सही राख्नुहोस्।");
+  return [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
+};
+const reportConfigs = {
+  loanPortfolio: { label:"ऋण लगानी तथा बाँकी साँवा/ब्याज", columns:[["member_code","सदस्य नं."],["full_name","सदस्य"],["application_no","ऋण नं."],["disbursed_amount","वितरित रकम"],["principal_outstanding","बाँकी साँवा"],["interest_outstanding","बाँकी ब्याज"],["principal_paid","तिरेको साँवा"],["interest_paid","तिरेको ब्याज"]] },
+  loanPayments: { label:"ऋण किस्ता तथा ब्याज आम्दानी", columns:[["paid_on","भुक्तानी मिति"],["member_code","सदस्य नं."],["full_name","सदस्य"],["receipt_no","रसिद नं."],["principal_amount","साँवा"],["interest_amount","ब्याज आम्दानी"],["fee_amount","शुल्क/जरिवाना"],["payment_method","माध्यम"]] },
+  savingsByPeriod: { label:"मासिक बचत प्रतिवेदन", columns:[["period_year","वि.सं. वर्ष"],["period_month","महिना नं."],["member_count","जम्मा गर्ने सदस्य"],["amount","कुल बचत"]] },
+  cashBank: { label:"नगद तथा बैंक मौज्दात", columns:[["account_name","खाता"],["account_type","प्रकार"],["opening_balance","सुरु मौज्दात"],["total_in","जम्मा आएको"],["total_out","जम्मा गएको"],["balance","अन्तिम मौज्दात"]] },
+  vouchers: { label:"Voucher प्रतिवेदन", columns:[["voucher_date","मिति"],["voucher_no","Voucher नं."],["voucher_type","प्रकार"],["narration","विवरण"],["debit","Debit"],["credit","Credit"],["status","स्थिति"]] }
+};
 
 export default function BhalaiKoshPage() {
   const router = useRouter();
@@ -68,6 +81,14 @@ export default function BhalaiKoshPage() {
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerError, setLedgerError] = useState("");
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [reportFromBs, setReportFromBs] = useState("2081-07-01");
+  const [reportToBs, setReportToBs] = useState("");
+  const [reportType, setReportType] = useState("loanPortfolio");
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
   const nepaliMonths = ["बैशाख","जेठ","असार","साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत"];
   const loadMonthlyContributions = async () => {
     setDepositLoading(true);
@@ -102,6 +123,36 @@ export default function BhalaiKoshPage() {
 
   useEffect(() => { if (!authReady) return; setSavingMembers(true); fetch("/api/bhalai-kosh/members").then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error||"सदस्य विवरण ल्याउन सकिएन।"); setMembers((d.members||[]).map(m=>({...m,dbId:m.id,id:m.member_code,name:m.full_name,phone:m.phone||"",joined:m.joined_on||"",savings:Number(m.ledger_balance||0),loan:0,status:m.status==="active"?"Active":m.status}))); setNotice("सदस्य विवरण Database बाट प्राप्त भयो।"); }).catch(e=>setNotice(e.message)).finally(()=>setSavingMembers(false)); }, [authReady]);
   useEffect(() => {
+    if (!authReady || active !== "Overview") return;
+    let cancelled = false;
+    setDashboardLoading(true);
+    fetch("/api/bhalai-kosh/dashboard-summary").then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Dashboard विवरण ल्याउन सकिएन।");
+      if (!cancelled) setDashboardSummary(d);
+    }).catch(e => { if (!cancelled) setNotice(e.message); })
+      .finally(() => { if (!cancelled) setDashboardLoading(false); });
+    return () => { cancelled = true; };
+  }, [authReady, active]);
+  useEffect(() => {
+    if (!authReady || active !== "Reports") return;
+    let cancelled = false;
+    setReportLoading(true); setReportError("");
+    try {
+      const params = new URLSearchParams();
+      const from = bsToAdDate(reportFromBs), to = bsToAdDate(reportToBs);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      fetch("/api/bhalai-kosh/reports?" + params.toString()).then(async r => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "प्रतिवेदन ल्याउन सकिएन।");
+        if (!cancelled) setReportData(d);
+      }).catch(e => { if (!cancelled) setReportError(e.message); })
+        .finally(() => { if (!cancelled) setReportLoading(false); });
+    } catch (e) { setReportError(e.message); setReportLoading(false); }
+    return () => { cancelled = true; };
+  }, [authReady, active, reportFromBs, reportToBs]);
+  useEffect(() => {
     if (!authReady || active !== "Ledger") return;
     if (!ledgerMemberId) { setLedgerData(null); setLedgerError(""); return; }
     const controller = new AbortController();
@@ -128,6 +179,19 @@ export default function BhalaiKoshPage() {
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
+  const currentReport = reportConfigs[reportType];
+  const currentReportRows = reportData?.[reportType] || [];
+  const exportCurrentReport = () => {
+    if (!currentReportRows.length) { setReportError("डाउनलोड गर्न प्रतिवेदन विवरण छैन।"); return; }
+    const columns = currentReport.columns;
+    const csv = [columns.map(x => x[1]), ...currentReportRows.map(row => columns.map(([key]) => String(row[key] ?? "").replace(/"/g,'""')))]
+      .map(row => row.map(value => '"'+value+'"').join(",")).join("\r\n");
+    const blob = new Blob(["\\uFEFF",csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = "bhalai-kosh-"+reportType+".csv"; link.click();
+    URL.revokeObjectURL(url);
+  };
   const importInitialStaff = async () => {
     if(!window.confirm("५२ जना कर्मचारीको नाम/कोड/उपलब्ध बैंक खाता र साउन–कात्तिक २०८३ सम्मको पुरानो बचत (प्रति महिना रु. १,०००) Cash Receipt Voucher सहित Database मा राख्ने हो? पहिले दर्ता भएका सदस्य/महिनाको बचत दोहोरिँदैन।")) return;
     setInitialImportBusy(true);
@@ -199,7 +263,7 @@ export default function BhalaiKoshPage() {
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">{notice}</div>
           {active === "Overview" && <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {[[Wallet,"सदस्य Ledger Balance", "रु. "+money(totalSavings), "Ledger मा रेकर्ड भएको जम्मा"],[HandCoins,"कुल ऋण वितरण","—","ऋण API अर्को चरणमा"],[TrendingUp,"बाँकी ऋण","—","ऋण API अर्को चरणमा"],[Users,"कुल सक्रिय सदस्य",String(members.length),"Database सदस्य सूची"]].map(([Icon,label,value,sub])=><article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">{label}</span><span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon size={19}/></span></div><p className="mt-5 text-2xl font-black tracking-tight">{value}</p><p className="mt-1 text-xs text-slate-400">{sub}</p></article>)}
+              {[[Wallet,"कुल सदस्य बचत","रु. "+money(dashboardSummary?.savings?.total||0),"सबै posted बचत"],[HandCoins,"कुल ऋण वितरण","रु. "+money(dashboardSummary?.loans?.totalIssued||0),dashboardSummary?.loans?.issuedCount+" वटा वितरित ऋण"],[TrendingUp,"बाँकी साँवा","रु. "+money(dashboardSummary?.loans?.principalOutstanding||0),"असुल हुन बाँकी मूलधन"],[TrendingUp,"बाँकी ब्याज","रु. "+money(dashboardSummary?.loans?.interestOutstanding||0),"किस्ता तालिकाअनुसार"],[Landmark,"ब्याज आम्दानी","रु. "+money(dashboardSummary?.income?.interest||0),"प्राप्त ब्याज Voucher बाट"],[Landmark,"नगद तथा बैंक","रु. "+money(dashboardSummary?.cashBank?.total||0),"Cash + Bank मौज्दात"],[Users,"सक्रिय सदस्य",String(dashboardSummary?.activeMembers??members.length),"Database सदस्य सूची"],[HandCoins,"विचाराधीन ऋण",String(dashboardSummary?.loans?.pendingCount||0),"स्वीकृति पर्खिरहेका"]].map(([Icon,label,value,sub])=><article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">{label}</span><span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon size={19}/></span></div><p className="mt-5 text-2xl font-black tracking-tight">{dashboardLoading?"…":value}</p><p className="mt-1 text-xs text-slate-400">{sub}</p></article>)}
             </div>
             <div className="mt-5 flex flex-wrap gap-2"><button onClick={()=>{setFinanceTab("loans");setActive("Finance");}} className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white">ऋण आवेदन तथा Voucher खोल्नुहोस्</button><button onClick={()=>{setFinanceTab("coa");setActive("Finance");}} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">Chart of Accounts हेर्नुहोस्</button></div><div className="mt-6 grid gap-5 xl:grid-cols-[1.4fr_.8fr]"><article className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="font-extrabold">मासिक कोष गतिविधि</h2><p className="mt-1 text-xs text-slate-400">बचत, ऋण वितरण र किस्ता असुली</p></div><span className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold">२०८३/८४</span></div><div className="mt-8 grid h-48 grid-cols-6 items-end gap-3">{[48,65,54,82,70,92].map((v,i)=><div key={i} className="flex h-full flex-col items-center justify-end gap-2"><div className="flex h-full w-full items-end justify-center gap-1"><div style={{height:v+"%"}} className="w-3 rounded-t bg-emerald-600"/><div style={{height:(v*.55)+"%"}} className="w-3 rounded-t bg-amber-400"/></div><span className="text-[10px] text-slate-400">{["जेठ","असार","साउन","भदौ","असोज","कात्तिक"][i]}</span></div>)}</div><div className="mt-4 flex gap-5 text-xs text-slate-500"><span className="flex items-center gap-2"><i className="size-2 rounded-full bg-emerald-600"/> बचत</span><span className="flex items-center gap-2"><i className="size-2 rounded-full bg-amber-400"/> ऋण/किस्ता गतिविधि</span></div></article>
             <article className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="font-extrabold">कोष सञ्चालन नियम</h2><div className="mt-5 space-y-4 text-sm"><div className="flex justify-between border-b pb-3"><span className="text-slate-500">मासिक बचत</span><b>रु. १,०००</b></div><div className="flex justify-between border-b pb-3"><span className="text-slate-500">ऋण सीमा</span><b>उपलब्ध कोषअनुसार</b></div><div className="flex justify-between border-b pb-3"><span className="text-slate-500">किस्ता</span><b>मूलधन + ब्याज</b></div><div className="flex justify-between"><span className="text-slate-500">अतिरिक्त रकम</span><b>जरिवाना / Extra</b></div></div></article></div>
@@ -230,7 +294,25 @@ export default function BhalaiKoshPage() {
           {active === "Finance" && <FinanceWorkspace key={financeTab} initialTab={financeTab} />}
           {active === "Loans" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">ऋण आवेदन तथा स्वीकृति</h2><p className="mt-2 text-sm text-slate-500">ऋण उपलब्ध कोषको सीमा भित्र मात्र स्वीकृत गर्ने। ब्याजदर, अवधि र EMI तालिका स्वीकृतिपूर्व देखाउने।</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{["ऋण आवेदन","स्वीकृत ऋण","किस्ता तालिका"].map(x=><div key={x} className="rounded-xl border border-slate-200 p-4"><HandCoins className="text-emerald-700"/><p className="mt-3 font-bold">{x}</p><p className="mt-1 text-xs text-slate-400">Backend जडानपछि सक्रिय हुनेछ</p></div>)}</div></article>}
           {active === "Import" && <article className="rounded-2xl border border-dashed border-emerald-300 bg-white p-8 text-center"><FileSpreadsheet className="mx-auto text-emerald-700" size={34}/><h2 className="mt-4 font-extrabold">मासिक Excel / CSV Import</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">Employee ID, Name, Month, Monthly Deposit, EMI Amount र Penalty/Extra भएका फाइल अपलोड गरी Preview र Validation पछि मात्र Import गर्ने सुविधा।</p><label className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"><Upload size={16}/> Excel / CSV छान्नुहोस्<input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e=>setNotice(e.target.files?.[0] ? e.target.files[0].name+" चयन भयो। Import Preview सुविधा backend चरणमा जडान हुनेछ।" : notice)}/></label></article>}
-          {active === "Reports" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">वित्तीय प्रतिवेदन</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{["मासिक बचत प्रतिवेदन","वार्षिक कोष विवरण","सदस्यगत बचत विवरण","ऋण तथा बाँकी किस्ता","बैंक/नगद मिलान","जरिवाना तथा अतिरिक्त रकम"].map(x=><div key={x} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">{x}<Download size={16} className="text-slate-400"/></div>)}</div></article>}
+          {active === "Reports" && <div className="space-y-5">
+            <article className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div><h2 className="font-extrabold">वित्तीय तथा ऋण प्रतिवेदन</h2><p className="mt-1 text-xs text-slate-500">Database मा पोस्ट भएका कारोबारबाट प्रत्यक्ष तयार गरिएको प्रतिवेदन। सबै मिति वि.सं. मा फिल्टर हुन्छन्।</p></div>
+                <div className="flex flex-wrap gap-2">
+                  <label className="text-xs font-semibold">देखि (वि.सं.)<input value={reportFromBs} onChange={e=>setReportFromBs(e.target.value.replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)))} placeholder="२०८१-०७-०१" className="mt-1 block w-36 rounded-lg border px-2.5 py-2 text-sm"/></label>
+                  <label className="text-xs font-semibold">सम्म (वि.सं.)<input value={reportToBs} onChange={e=>setReportToBs(e.target.value.replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)))} placeholder="हालसम्म" className="mt-1 block w-36 rounded-lg border px-2.5 py-2 text-sm"/></label>
+                  <button onClick={()=>{setReportFromBs("");setReportToBs("");}} className="rounded-lg border px-3 py-2 text-xs font-bold">सबै मिति</button>
+                  <button onClick={exportCurrentReport} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white"><Download size={14}/> CSV Export</button>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">{Object.entries(reportConfigs).map(([key,value])=><button key={key} onClick={()=>setReportType(key)} className={"rounded-lg px-3 py-2 text-xs font-bold "+(reportType===key?"bg-emerald-700 text-white":"border bg-white text-slate-600")}>{value.label}</button>)}</div>
+              {reportData?.summary && <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[[ "कुल साँवा असुली",reportData.summary.principal_collected ],["ब्याज आम्दानी",reportData.summary.interest_income],["शुल्क/जरिवाना",reportData.summary.fee_income],["किस्ता संख्या",reportData.summary.payment_count]].map(([label,value])=><div key={label} className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">{label}</p><b className="mt-1 block text-lg">{label==="किस्ता संख्या"?value:"रु. "+money(value)}</b></div>)}
+              </div>}
+              {reportError&&<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
+              {reportLoading?<p className="p-8 text-center text-sm text-slate-500">प्रतिवेदन तयार हुँदैछ…</p>:<div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{currentReport.columns.map(([key,label])=><th key={key} className="px-3 py-3">{label}</th>)}</tr></thead><tbody>{currentReportRows.map((row,index)=><tr key={row.id||row.receipt_no||row.voucher_no||index} className="border-t border-slate-100">{currentReport.columns.map(([key])=><td key={key} className="px-3 py-3 whitespace-nowrap">{["principal","disbursed_amount","principal_outstanding","interest_outstanding","principal_paid","interest_paid","principal_amount","interest_amount","fee_amount","amount","opening_balance","total_in","total_out","balance","debit","credit"].includes(key)?money(row[key]):key.endsWith("_on")||key.endsWith("_date")?toBsDate(row[key]):String(row[key]??"—")}</td>)}</tr>)}{!currentReportRows.length&&<tr><td colSpan={currentReport.columns.length} className="px-4 py-8 text-center text-slate-400">यस मिति दायरामा विवरण भेटिएन।</td></tr>}</tbody></table></div>}
+            </article>
+          </div>}
           {active === "Ledger" && <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div><h2 className="font-extrabold">व्यक्तिगत सदस्य Ledger</h2><p className="mt-1 text-sm text-slate-500">बचत जम्मा, ऋण वितरण, किस्ता भुक्तानी र प्रत्येक कारोबारपछिको Ledger विवरण एउटै ठाउँमा।</p></div>
