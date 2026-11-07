@@ -24,7 +24,7 @@ const toBsDate = (value) => {
   if (!value) return "—";
   const [year, month, day] = String(value).slice(0, 10).split("-").map(Number);
   if (!year || !month || !day) return "—";
-  return new NepaliDate(new Date(year, month - 1, day, 12)).format("YYYY-MM-DD").replace(/\\d/g, digit => "०१२३४५६७८९"[Number(digit)]);
+  return new NepaliDate(new Date(year, month - 1, day, 12)).format("YYYY-MM-DD").replace(/\d/g, digit => "०१२३४५६७८९"[Number(digit)]);
 };
 const bsToAdDate = (value) => {
   if (!value) return "";
