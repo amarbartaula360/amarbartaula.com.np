@@ -8,7 +8,7 @@ export async function GET() {
     if (!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
     const db = getBhalaiKoshPool();
     const { rows } = await db.query(`
-      SELECT m.id,m.member_code,m.full_name,m.nepali_name,m.gender,m.date_of_birth,m.phone,m.email,m.address,m.citizenship_no,m.designation,m.department,m.bank_name,m.bank_branch,m.bank_account_name,m.bank_account_no,m.emergency_contact,m.joined_on,m.status,m.notes,
+      SELECT m.id,m.member_code,m.full_name,m.nepali_name,m.gender,m.date_of_birth,m.phone,m.email,m.address,m.citizenship_no,m.designation,m.department,m.bank_name,m.bank_branch,m.bank_account_name,m.bank_account_no,m.emergency_contact,m.joined_on,m.status,m.notes,m.continue_saving,
       COALESCE((SELECT SUM(ml.credit-ml.debit) FROM member_ledger ml WHERE ml.member_id=m.id),0) AS ledger_balance
       FROM members m WHERE m.organization_id=$1 ORDER BY m.full_name
     `,[s.oid]);
