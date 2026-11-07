@@ -63,8 +63,8 @@ export async function GET(request) {
           COALESCE(SUM(p.fee_amount),0) AS fee_income,
           COUNT(p.id)::int AS payment_count
         FROM loan_payments p WHERE p.organization_id=$1 AND ${range('p.paid_on')}
-      `,[oid,from,to])
-,      db.query(`
+      `,[oid,from,to]),
+      db.query(`
         SELECT m.member_code,m.full_name,COUNT(s.id)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
         FROM members m LEFT JOIN savings s ON s.member_id=m.id AND s.organization_id=m.organization_id AND s.status='posted' AND ${range('s.paid_on')}
         WHERE m.organization_id=$1 GROUP BY m.id ORDER BY m.member_code
