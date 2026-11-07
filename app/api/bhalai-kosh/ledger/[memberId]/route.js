@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 function bsDateToAd(value, label) {
   if (!value) return null;
-  const match = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/.exec(value);
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
   if (!match) throw new Error(label + " मिति YYYY-MM-DD (BS) ढाँचामा राख्नुहोस्।");
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 32) {
