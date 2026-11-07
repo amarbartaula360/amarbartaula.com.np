@@ -8,6 +8,7 @@ const bsToAd=(value)=>{const d=new NepaliDate(String(value||"").trim()).toJsDate
 const adToBs=(value)=>{if(!value)return "—";try{return new NepaliDate(new Date(String(value).slice(0,10)+"T12:00:00")).format("YYYY/MM/DD","np");}catch{return "—";}};
 const accountTypeNp={asset:"सम्पत्ति",liability:"दायित्व",equity:"पूँजी/कोष",income:"आम्दानी",expense:"खर्च"};
 export default function FinanceWorkspace({initialTab="journal",onOpenLedger}){
+ const [editingVoucher,setEditingVoucher]=useState(null),[editVoucherForm,setEditVoucherForm]=useState({}),[editVoucherBusy,setEditVoucherBusy]=useState(false);
  const [tab,setTab]=useState(initialTab),[accounts,setAccounts]=useState([]),[members,setMembers]=useState([]),[vouchers,setVouchers]=useState([]),[loans,setLoans]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
  const [date,setDate]=useState(todayBs()),[narration,setNarration]=useState(""),[lines,setLines]=useState([{accountId:"",memberId:"",debit:"",credit:""},{accountId:"",memberId:"",debit:"",credit:""}]);
  const [loanForm,setLoanForm]=useState({memberId:"",appliedOnBs:todayBs(),principal:"",annualInterestRate:"12",termMonths:"12",interestMethod:"flat",purpose:""});const [approvalDates,setApprovalDates]=useState({});const [editingLoan,setEditingLoan]=useState(null);const [editLoanForm,setEditLoanForm]=useState({});const [editingLoanPayment,setEditingLoanPayment]=useState(null);const [disburseTarget,setDisburseTarget]=useState(null);const [disburseMethod,setDisburseMethod]=useState("cash");
