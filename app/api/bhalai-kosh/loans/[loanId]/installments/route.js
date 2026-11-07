@@ -17,7 +17,7 @@ export async function GET(_request, { params }) {
     const db = getBhalaiKoshPool();
     const loan = await db.query(
       "SELECT id, member_id, principal, annual_interest_rate, interest_method, term_months FROM loans WHERE id=$1 AND organization_id=$2",
-      [Number(id), session.oid]
+      [Number(loanId), session.oid]
     );
     if (!loan.rowCount) return NextResponse.json({ error: "ऋण विवरण भेटिएन।" }, { status: 404 });
 
@@ -34,7 +34,7 @@ export async function GET(_request, { params }) {
        ) paid ON TRUE
        WHERE i.loan_id=$1
        ORDER BY i.installment_no`,
-      [Number(id), session.oid]
+      [Number(loanId), session.oid]
     );
 
     const totals = rows.reduce((a, i) => {
