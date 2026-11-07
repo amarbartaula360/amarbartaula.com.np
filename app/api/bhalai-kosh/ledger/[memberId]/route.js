@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
 import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import NepaliDate from "nepali-date-converter";
 
 export const runtime = "nodejs";
 
-export async function GET(_request, { params }) {
+function bsDateToAd(value, label) {
+  if (!value) return null;
+  const match = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/.exec(value);
+  if (!match) throw new Error(label + " मिति YYYY-MM-DD (BS) ढाँचामा राख्नुहोस्।");
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 32) {
+    throw new Error(label + " मिति सही छैन।");
+  }
+  const ad = new NepaliDate(year, month - 1, day).getAD();
+  return String(ad.year).padStart(4, "0") + "-" + String(ad.month).padStart(2, "0") + "-" + String(ad.date).padStart(2, "0");
+}
+
+export async function GET(request, { params }) {
   try {
     const session = await getBhalaiKoshSession();
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,6 +25,20 @@ export async function GET(_request, { params }) {
     const { memberId } = await params;
     if (!/^\d+$/.test(String(memberId)) || Number(memberId) <= 0) {
       return NextResponse.json({ error: "सही सदस्य छान्नुहोस्।" }, { status: 400 });
+    }
+
+    const url = new URL(request.url);
+    const fromBs = url.searchParams.get("fromBs") || "";
+    const toBs = url.searchParams.get("toBs") || "";
+    let fromAd, toAd;
+    try {
+      fromAd = bsDateToAd(fromBs, "सुरु");
+      toAd = bsDateToAd(toBs, "अन्तिम");
+    } catch (dateError) {
+      return NextResponse.json({ error: dateError.message }, { status: 400 });
+    }
+    if (fromAd && toAd && fromAd > toAd) {
+      return NextResponse.json({ error: "सुरु मिति अन्तिम मितिभन्दा पछाडि हुन मिल्दैन।" }, { status: 400 });
     }
 
     const db = getBhalaiKoshPool();
@@ -108,12 +135,25 @@ export async function GET(_request, { params }) {
       runningBalance += Number(row.credit || 0) - Number(row.debit || 0);
       return { ...row, running_balance: runningBalance };
     });
+    const openingBalance = fromAd
+      ? (withBalance.filter(row => String(row.transaction_date).slice(0, 10) < fromAd).at(-1)?.running_balance || 0)
+      : 0;
+    const filteredTransactions = withBalance.filter(row => {
+      const date = String(row.transaction_date).slice(0, 10);
+      return (!fromAd || date >= fromAd) && (!toAd || date <= toAd);
+    });
+    const closingBalance = filteredTransactions.length
+      ? filteredTransactions[filteredTransactions.length - 1].running_balance
+      : openingBalance;
 
     const savings = savingsResult.rows[0] || {};
     const loans = loanResult.rows[0] || {};
     return NextResponse.json({
       member: memberResult.rows[0],
-      transactions: withBalance,
+      transactions: filteredTransactions,
+      filters: { fromBs, toBs, fromAd, toAd },
+      openingBalance,
+      closingBalance,
       summary: {
         totalSavings: Number(savings.total_savings || 0),
         savingCount: Number(savings.saving_count || 0),
