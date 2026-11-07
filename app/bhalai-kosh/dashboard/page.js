@@ -188,7 +188,7 @@ export default function BhalaiKoshPage() {
       if (to) params.set("to", to);
       fetch("/api/bhalai-kosh/reports?" + params.toString()).then(async r => {
         const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "प्रतिवेदन ल्याउन सकिएन।");
+        if (!r.ok) throw new Error([d.error || "प्रतिवेदन ल्याउन सकिएन।", d.detail ? "Database विवरण: " + d.detail : "", d.code ? "Code: " + d.code : ""].filter(Boolean).join("\n"));
         if (!cancelled) setReportData(d);
       }).catch(e => { if (!cancelled) setReportError(e.message); })
         .finally(() => { if (!cancelled) setReportLoading(false); });
