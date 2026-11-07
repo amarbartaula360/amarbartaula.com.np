@@ -100,7 +100,36 @@ export async function GET(request) {
         GROUP BY a.id ORDER BY a.account_type,a.account_code
       `,[oid,from,to])
     ]);
-    return NextResponse.json({filters:{from,to},loanPortfolio:portfolio.rows,loanPayments:payments.rows,savingsByPeriod:savings.rows,memberSavings:memberSavings.rows,annualSavings:annualSavings.rows,incomeStatement:incomeStatement.rows,cashBank:cash.rows,vouchers:vouchers.rows,summary:summary.rows[0]||{}});
+    const [trialBalance, balanceRows] = await Promise.all([
+      db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
+        COALESCE(SUM(vl.debit),0) AS total_debit,COALESCE(SUM(vl.credit),0) AS total_credit,
+        GREATEST(0,COALESCE(SUM(vl.debit-vl.credit),0)) AS debit_balance,
+        GREATEST(0,COALESCE(SUM(vl.credit-vl.debit),0)) AS credit_balance
+        FROM chart_of_accounts a
+        LEFT JOIN voucher_lines vl ON vl.account_id=a.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
+          AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
+          AND v.voucher_date>=COALESCE($2::date,'0001-01-01'::date)
+        WHERE a.organization_id=$1 AND a.is_active=true
+        GROUP BY a.id ORDER BY a.account_code`,[oid,from,to]),
+      db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
+        COALESCE(SUM(vl.debit),0) AS total_debit,COALESCE(SUM(vl.credit),0) AS total_credit,
+        COALESCE(SUM(vl.debit-vl.credit),0) AS net
+        FROM chart_of_accounts a
+        LEFT JOIN voucher_lines vl ON vl.account_id=a.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
+          AND v.voucher_date<=COALESCE($2::date,'9999-12-31'::date)
+        WHERE a.organization_id=$1 AND a.is_active=true
+        GROUP BY a.id ORDER BY a.account_code`,[oid,to])
+    ]);
+    const bsRows=balanceRows.rows;
+    const assets=bsRows.filter(x=>x.account_type==='asset').map(x=>({...x,balance:Number(x.net)}));
+    const liabilities=bsRows.filter(x=>x.account_type==='liability').map(x=>({...x,balance:-Number(x.net)}));
+    const equity=bsRows.filter(x=>x.account_type==='equity').map(x=>({...x,balance:-Number(x.net)}));
+    const netIncome=bsRows.filter(x=>['income','expense'].includes(x.account_type)).reduce((sum,x)=>sum+(x.account_type==='income'?-Number(x.net):Number(x.net)),0);
+    const sumRows=rows=>rows.reduce((sum,x)=>sum+Number(x.balance||0),0);
+    const balanceSheet={asOf:to,assets,liabilities,equity,netIncome,totalAssets:sumRows(assets),totalLiabilities:sumRows(liabilities),totalEquity:sumRows(equity),totalLiabilitiesEquity:sumRows(liabilities)+sumRows(equity)+netIncome};
+    return NextResponse.json({filters:{from,to},loanPortfolio:portfolio.rows,loanPayments:payments.rows,savingsByPeriod:savings.rows,memberSavings:memberSavings.rows,annualSavings:annualSavings.rows,incomeStatement:incomeStatement.rows,cashBank:cash.rows,vouchers:vouchers.rows,summary:summary.rows[0]||{},trialBalance:trialBalance.rows,balanceSheet});
   } catch (error) {
     console.error("Bhalai reports:", error);
     return NextResponse.json({ error: "वित्तीय प्रतिवेदन ल्याउन सकिएन।" }, { status: 500 });
