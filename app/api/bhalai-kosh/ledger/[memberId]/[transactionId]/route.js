@@ -21,14 +21,15 @@ export async function PATCH(request,{params}){
   if(/^\d+$/.test(raw)){
    const x=await c.query("SELECT * FROM member_ledger WHERE id=$1 AND member_id=$2 AND organization_id=$3 FOR UPDATE",[Number(raw),mid,s.oid]);ledger=x.rows[0]||null;
   }
-  const type=ledger?.transaction_type || (raw.startsWith("saving-")?"saving":raw.startsWith("loan-")?"loan_repayment":"");
+  const type=ledger?.transaction_type || String(b.transactionType||"");
   if(!["saving","contribution","loan_disbursement","loan_repayment"].includes(type))throw Object.assign(new Error("यो Ledger कारोबार सम्पादन गर्न मिल्दैन।"),{status:400});
   const amount=Number(b.amount),principal=Number(b.principalAmount),interest=Number(b.interestAmount||0),fee=Number(b.feeAmount||0);
   if(type==="saving"||type==="contribution"){
    if(!Number.isFinite(amount)||amount<=0)throw Object.assign(new Error("बचत रकम शून्यभन्दा बढी हुनुपर्छ।"),{status:400});
    let voucherId=ledger?.voucher_id||null,voucher=null,saving=null;
+   if(raw.startsWith("saving-")){const sr=await c.query("SELECT * FROM savings WHERE id=$1 AND organization_id=$2 AND member_id=$3 AND status='posted' FOR UPDATE",[Number(raw.slice(7)),s.oid,mid]);saving=sr.rows[0]||null;}
    if(voucherId){const vr=await c.query("SELECT * FROM vouchers WHERE id=$1 AND organization_id=$2 FOR UPDATE",[voucherId,s.oid]);voucher=vr.rows[0]||null;}
-   if(!voucher && ledger?.voucher_id==null){
+   if(!voucher && ledger?.voucher_id==null && ledger){
     const sr=await c.query("SELECT * FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted' AND paid_on=$3::date AND amount=$4 ORDER BY id LIMIT 1 FOR UPDATE",[s.oid,mid,ledger.transaction_date,ledger.credit]);saving=sr.rows[0]||null;
    } else if(voucher){
     const sr=await c.query("SELECT * FROM savings WHERE organization_id=$1 AND member_id=$2 AND receipt_no=$3 AND status='posted' FOR UPDATE",[s.oid,mid,voucher.voucher_no]);saving=sr.rows[0]||null;
@@ -48,9 +49,8 @@ export async function PATCH(request,{params}){
     if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='in',category='saving' WHERE id=$4",[ca.rows[0].id,date,amount,tx.rows[0].id]);
     else await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'in','saving',$4,'voucher',$5,$6,'मासिक बचत',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,voucher.voucher_no,s.uid||null]);
    }else{
-    if(!ledger)throw Object.assign(new Error("सम्बन्धित बचत Ledger भेटिएन।"),{status:404});
-    await c.query("UPDATE member_ledger SET transaction_date=$1,credit=$2,debit=0,narration=COALESCE(narration,'मासिक बचत') WHERE id=$3",[date,amount,ledger.id]);
-    if(saving && saving.payment_method!==method)throw Object.assign(new Error("पुरानो बचतमा Voucher नभएकाले Cash/Bank परिवर्तन गर्न मिल्दैन; मिति र रकम मात्र परिवर्तन गर्न सकिन्छ।"),{status:409});
+    if(ledger)await c.query("UPDATE member_ledger SET transaction_date=$1,credit=$2,debit=0,narration=COALESCE(narration,'मासिक बचत') WHERE id=$3",[date,amount,ledger.id]);
+    if(!saving)throw Object.assign(new Error("सम्बन्धित बचत Ledger भेटिएन।"),{status:404});
    }
    await c.query("COMMIT");return NextResponse.json({ok:true,message:"बचत कारोबार सम्पादन भयो।"});
   }
@@ -74,7 +74,8 @@ export async function PATCH(request,{params}){
    await c.query("UPDATE vouchers SET voucher_date=$1 WHERE id=$2",[date,voucherId]);
    await c.query("UPDATE loans SET disbursed_on=$1,disbursed_amount=$2 WHERE id=$3",[date,amount,loanId]);
    await c.query("UPDATE member_ledger SET transaction_date=$1,debit=$2,credit=0 WHERE id=$3",[date,amount,ledger.id]);
-   await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3 WHERE organization_id=$4 AND source_type='voucher' AND source_id=$5",[ca.rows[0].id,date,amount,s.oid,voucherId]);
+   const tx=await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3 WHERE organization_id=$4 AND source_type='voucher' AND source_id=$5 RETURNING id",[ca.rows[0].id,date,amount,s.oid,voucherId]);
+   if(!tx.rowCount)await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'out','loan_disbursement',$4,'voucher',$5,$6,'ऋण वितरण',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,vr.rows[0].voucher_no,s.uid||null]);
    await c.query("COMMIT");return NextResponse.json({ok:true,message:"ऋण वितरण कारोबार सम्पादन भयो।"});
   }
   // EMI / loan repayment
