@@ -103,7 +103,7 @@ export async function GET(request) {
     const accountingLedger = await db.query(`
       WITH account_opening AS (
         SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,
-          COALESCE(SUM(CASE WHEN a.account_type IN ('asset','expense') THEN vl.debit-vl.credit ELSE vl.credit-vl.debit END),0)::numeric AS opening_balance
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN CASE WHEN a.account_type IN ('asset','expense') THEN vl.debit-vl.credit ELSE vl.credit-vl.debit END ELSE 0 END),0)::numeric AS opening_balance
         FROM chart_of_accounts a
         LEFT JOIN voucher_lines vl ON vl.account_id=a.id
         LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
