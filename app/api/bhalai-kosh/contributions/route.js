@@ -12,7 +12,7 @@ export async function GET(request) {
     const {rows}=await getBhalaiKoshPool().query(`
       SELECT sv.id,sv.member_id,m.member_code,m.full_name,sv.period_year,sv.period_month,sv.amount,sv.paid_on,sv.payment_method,sv.receipt_no,sv.status
       FROM savings sv JOIN members m ON m.id=sv.member_id
-      WHERE sv.organization_id=$1 AND sv.period_year=$2 AND sv.period_month=$3 AND sv.status='posted' AND m.status='active'
+      WHERE sv.organization_id=$1 AND sv.period_year=$2 AND sv.period_month=$3 AND sv.status='posted'
       ORDER BY m.full_name
     `,[s.oid,year,month]);
     return NextResponse.json({contributions:rows});
