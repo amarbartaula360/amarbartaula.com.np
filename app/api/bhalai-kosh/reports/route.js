@@ -103,7 +103,7 @@ export async function GET(request) {
     const accountingLedger = await db.query(`
       WITH entries AS (
         SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,
-          v.id AS voucher_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,v.status,
+          v.id AS voucher_id,vl.id AS voucher_line_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,v.status,
           COALESCE(vl.debit,0)::numeric AS debit,COALESCE(vl.credit,0)::numeric AS credit
         FROM chart_of_accounts a
         JOIN voucher_lines vl ON vl.account_id=a.id
@@ -112,14 +112,15 @@ export async function GET(request) {
           AND v.status='posted' AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
       ), balances AS (
         SELECT *,SUM(CASE WHEN account_type IN ('asset','expense') THEN debit-credit ELSE credit-debit END)
-          OVER (PARTITION BY account_id ORDER BY voucher_date,voucher_id) AS running_balance
+          OVER (PARTITION BY account_id ORDER BY voucher_date,voucher_id,voucher_line_id
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_balance
         FROM entries
       )
-      SELECT account_id,account_code,account_name,account_type,voucher_no,voucher_date,voucher_type,narration,
+      SELECT account_id,account_code,account_name,account_type,voucher_line_id,voucher_no,voucher_date,voucher_type,narration,
         debit,credit,running_balance
       FROM balances
       WHERE voucher_date>=COALESCE($2::date,'0001-01-01'::date)
-      ORDER BY account_code,voucher_date,voucher_id
+      ORDER BY account_code,voucher_date,voucher_id,voucher_line_id
     `,[oid,from,to]);
     const [trialBalance, balanceRows] = await Promise.all([
       db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
