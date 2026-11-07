@@ -16,7 +16,7 @@ export async function GET(request) {
     }
     const db = getBhalaiKoshPool(), oid = session.oid;
     const range = (column) => `(${column} >= COALESCE($2::date,'0001-01-01'::date) AND ${column} <= COALESCE($3::date,'9999-12-31'::date))`;
-    const [portfolio, payments, savings, cash, vouchers, summary] = await Promise.all([
+    const [portfolio, payments, savings, cash, vouchers, summary, memberSavings, annualSavings, incomeStatement] = await Promise.all([
       db.query(`
         SELECT l.id,l.application_no,l.status,l.principal,l.disbursed_amount,l.disbursed_on,l.annual_interest_rate,l.term_months,
           m.member_code,m.full_name,
@@ -64,8 +64,25 @@ export async function GET(request) {
           COUNT(p.id)::int AS payment_count
         FROM loan_payments p WHERE p.organization_id=$1 AND ${range('p.paid_on')}
       `,[oid,from,to])
+,      db.query(`
+        SELECT m.member_code,m.full_name,COUNT(s.id)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
+        FROM members m LEFT JOIN savings s ON s.member_id=m.id AND s.organization_id=m.organization_id AND s.status='posted' AND ${range('s.paid_on')}
+        WHERE m.organization_id=$1 GROUP BY m.id ORDER BY m.member_code
+      `,[oid,from,to]),
+      db.query(`
+        SELECT s.period_year,COUNT(DISTINCT s.member_id)::int AS member_count,COUNT(*)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
+        FROM savings s WHERE s.organization_id=$1 AND s.status='posted' AND ${range('s.paid_on')}
+        GROUP BY s.period_year ORDER BY s.period_year
+      `,[oid,from,to]),
+      db.query(`
+        SELECT a.account_code,a.account_name,a.account_type,COALESCE(SUM(vl.credit-vl.debit),0) AS net_amount
+        FROM chart_of_accounts a LEFT JOIN voucher_lines vl ON vl.account_id=a.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted' AND ${range('v.voucher_date')}
+        WHERE a.organization_id=$1 AND a.account_type IN ('income','expense')
+        GROUP BY a.id ORDER BY a.account_type,a.account_code
+      `,[oid,from,to])
     ]);
-    return NextResponse.json({filters:{from,to},loanPortfolio:portfolio.rows,loanPayments:payments.rows,savingsByPeriod:savings.rows,cashBank:cash.rows,vouchers:vouchers.rows,summary:summary.rows[0]||{}});
+    return NextResponse.json({filters:{from,to},loanPortfolio:portfolio.rows,loanPayments:payments.rows,savingsByPeriod:savings.rows,memberSavings:memberSavings.rows,annualSavings:annualSavings.rows,incomeStatement:incomeStatement.rows,cashBank:cash.rows,vouchers:vouchers.rows,summary:summary.rows[0]||{}});
   } catch (error) {
     console.error("Bhalai reports:", error);
     return NextResponse.json({ error: "वित्तीय प्रतिवेदन ल्याउन सकिएन।" }, { status: 500 });
