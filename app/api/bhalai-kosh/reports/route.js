@@ -101,25 +101,34 @@ export async function GET(request) {
       `,[oid,from,to])
     ]);
     const accountingLedger = await db.query(`
-      WITH entries AS (
+      WITH account_opening AS (
         SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,
-          v.id AS voucher_id,vl.id AS voucher_line_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,v.status,
-          COALESCE(vl.debit,0)::numeric AS debit,COALESCE(vl.credit,0)::numeric AS credit
+          COALESCE(SUM(CASE WHEN a.account_type IN ('asset','expense') THEN vl.debit-vl.credit ELSE vl.credit-vl.debit END),0)::numeric AS opening_balance
         FROM chart_of_accounts a
-        JOIN voucher_lines vl ON vl.account_id=a.id
-        JOIN vouchers v ON v.id=vl.voucher_id
-        WHERE a.organization_id=$1 AND v.organization_id=$1 AND a.is_active=true
-          AND v.status='posted' AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
+        LEFT JOIN voucher_lines vl ON vl.account_id=a.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
+          AND ($2::date IS NULL OR v.voucher_date<$2::date)
+          AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
+        WHERE a.organization_id=$1 AND a.is_active=true
+        GROUP BY a.id
+      ), entries AS (
+        SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,a.opening_balance,
+          v.id AS voucher_id,vl.id AS voucher_line_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,
+          COALESCE(vl.debit,0)::numeric AS debit,COALESCE(vl.credit,0)::numeric AS credit
+        FROM account_opening a
+        JOIN voucher_lines vl ON vl.account_id=a.account_id
+        JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
+        WHERE v.voucher_date>=COALESCE($2::date,'0001-01-01'::date)
+          AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
       ), balances AS (
-        SELECT *,SUM(CASE WHEN account_type IN ('asset','expense') THEN debit-credit ELSE credit-debit END)
+        SELECT *,opening_balance+SUM(CASE WHEN account_type IN ('asset','expense') THEN debit-credit ELSE credit-debit END)
           OVER (PARTITION BY account_id ORDER BY voucher_date,voucher_id,voucher_line_id
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_balance
         FROM entries
       )
       SELECT account_id,account_code,account_name,account_type,voucher_line_id,voucher_no,voucher_date,voucher_type,narration,
-        debit,credit,running_balance
+        opening_balance,debit,credit,running_balance
       FROM balances
-      WHERE voucher_date>=COALESCE($2::date,'0001-01-01'::date)
       ORDER BY account_code,voucher_date,voucher_id,voucher_line_id
     `,[oid,from,to]);
     const [trialBalance, balanceRows] = await Promise.all([
@@ -131,11 +140,11 @@ export async function GET(request) {
         LEFT JOIN voucher_lines vl ON vl.account_id=a.id
         LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
           AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
-          AND v.voucher_date>=COALESCE($2::date,'0001-01-01'::date)
         WHERE a.organization_id=$1 AND a.is_active=true
         GROUP BY a.id ORDER BY a.account_code`,[oid,from,to]),
       db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
-        COALESCE(SUM(vl.debit),0) AS total_debit,COALESCE(SUM(vl.credit),0) AS total_credit,
+        COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit ELSE 0 END),0) AS total_debit,
+        COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit ELSE 0 END),0) AS total_credit,
         COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit-vl.credit ELSE 0 END),0) AS net
         FROM chart_of_accounts a
         LEFT JOIN voucher_lines vl ON vl.account_id=a.id
