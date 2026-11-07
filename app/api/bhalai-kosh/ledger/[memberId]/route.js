@@ -53,7 +53,7 @@ export async function GET(request, { params }) {
 
     // Posted member-ledger rows are the primary source. The NOT EXISTS fallbacks
     // expose older savings/loan records that pre-date ledger posting without mutating data.
-    const [ledgerResult, savingsResult, loanResult, legacySavingsResult, legacyLoanResult] = await Promise.all([
+    const [ledgerResult, savingsResult, refundResult, loanResult, legacySavingsResult, legacyLoanResult] = await Promise.all([
       db.query(
         `SELECT id::text AS id, transaction_date, transaction_type, debit, credit, narration, voucher_id
          FROM member_ledger
@@ -63,6 +63,11 @@ export async function GET(request, { params }) {
       db.query(
         `SELECT COALESCE(SUM(amount),0) AS total_savings, COUNT(*)::int AS saving_count
          FROM savings WHERE organization_id = $1 AND member_id = $2 AND status = 'posted'`,
+        [session.oid, id]
+      ),
+      db.query(
+        `SELECT COALESCE(SUM(amount),0) AS total_refunded, COUNT(*)::int AS refund_count
+         FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type='refund'`,
         [session.oid, id]
       ),
       db.query(
@@ -148,7 +153,10 @@ export async function GET(request, { params }) {
       : openingBalance;
 
     const savings = savingsResult.rows[0] || {};
+    const refunds = refundResult.rows[0] || {};
     const loans = loanResult.rows[0] || {};
+    const grossSavings = Number(savings.total_savings || 0);
+    const totalRefunded = Number(refunds.total_refunded || 0);
     return NextResponse.json({
       member: memberResult.rows[0],
       transactions: filteredTransactions,
@@ -156,7 +164,10 @@ export async function GET(request, { params }) {
       openingBalance,
       closingBalance,
       summary: {
-        totalSavings: Number(savings.total_savings || 0),
+        grossSavings,
+        totalRefunded,
+        refundCount: Number(refunds.refund_count || 0),
+        totalSavings: grossSavings - totalRefunded,
         savingCount: Number(savings.saving_count || 0),
         totalDisbursed: Number(loans.total_disbursed || 0),
         principalPaid: Number(loans.principal_paid || 0),
