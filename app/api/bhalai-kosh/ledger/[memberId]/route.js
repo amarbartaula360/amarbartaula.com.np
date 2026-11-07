@@ -10,7 +10,7 @@ export async function GET(_request, { params }) {
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { memberId } = await params;
-    if (!/^\\d+$/.test(String(memberId)) || Number(memberId) <= 0) {
+    if (!/^\d+$/.test(String(memberId)) || Number(memberId) <= 0) {
       return NextResponse.json({ error: "सही सदस्य छान्नुहोस्।" }, { status: 400 });
     }
 
