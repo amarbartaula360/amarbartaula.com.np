@@ -20,7 +20,7 @@ export async function GET(request) {
       db.query(`
         SELECT l.id,l.application_no,l.status,l.principal,l.disbursed_amount,l.disbursed_on,l.annual_interest_rate,l.term_months,
           m.member_code,m.full_name,
-          COALESCE(i.principal_due,COALESCE(l.disbursed_amount,l.principal))-COALESCE(i.principal_paid,0) AS principal_outstanding,
+          GREATEST(0,COALESCE(i.principal_due,COALESCE(l.disbursed_amount,l.principal))-COALESCE(i.principal_paid,p.principal_paid,0)) AS principal_outstanding,
           GREATEST(0,COALESCE(i.interest_due,0)-COALESCE(i.interest_paid,0)) AS interest_outstanding,
           COALESCE(p.principal_paid,0) AS principal_paid,COALESCE(p.interest_paid,0) AS interest_paid,COALESCE(p.fee_paid,0) AS fee_paid
         FROM loans l JOIN members m ON m.id=l.member_id
