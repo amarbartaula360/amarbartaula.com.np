@@ -28,7 +28,27 @@ export async function PATCH(request,{params}){
   await c.query("BEGIN");
   const q=await c.query("SELECT l.*,m.status AS member_status FROM loans l JOIN members m ON m.id=l.member_id WHERE l.id=$1 AND l.organization_id=$2 FOR UPDATE",[id,s.oid]);
   const loan=q.rows[0];if(!loan)throw Object.assign(new Error("ऋण भेटिएन।"),{status:404});
-  if(action==="edit"){
+  if(action==="edit_payment_method"){
+   if(!["disbursed","closed"].includes(loan.status))throw Object.assign(new Error("वितरण भइसकेको ऋणको भुक्तानी माध्यम मात्र सम्पादन गर्न मिल्छ।"),{status:409});
+   const method=String(b.paymentMethod||"");
+   if(!["cash","bank"].includes(method))throw Object.assign(new Error("नगद वा बैंक माध्यम छान्नुहोस्।"),{status:400});
+   const code=method==="bank"?"1002":"1001";
+   const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,method]);
+   if(!cash.rowCount)throw Object.assign(new Error(method==="bank"?"सक्रिय Bank Account उपलब्ध छैन।":"सक्रिय Cash Account उपलब्ध छैन।"),{status:400});
+   const voucher=await c.query("SELECT id FROM vouchers WHERE organization_id=$1 AND reference_type='loan' AND reference_id=$2 AND status='posted' ORDER BY id DESC LIMIT 1 FOR UPDATE",[s.oid,id]);
+   if(!voucher.rowCount)throw Object.assign(new Error("ऋण वितरण Voucher भेटिएन।"),{status:404});
+   const voucherId=voucher.rows[0].id;
+   const account=await c.query("SELECT id FROM chart_of_accounts WHERE organization_id=$1 AND account_code=$2 AND is_active=true",[s.oid,code]);
+   if(!account.rowCount)throw Object.assign(new Error("छानिएको Cash/Bank लेखा खाता उपलब्ध छैन।"),{status:400});
+   const line=await c.query("SELECT id FROM voucher_lines WHERE voucher_id=$1 AND credit>0 ORDER BY id DESC LIMIT 1 FOR UPDATE",[voucherId]);
+   if(!line.rowCount)throw Object.assign(new Error("ऋण वितरण Voucher को भुक्तानी लाइन भेटिएन।"),{status:404});
+   await c.query("UPDATE voucher_lines SET account_id=$1 WHERE id=$2",[account.rows[0].id,line.rows[0].id]);
+   const tx=await c.query("SELECT id FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='voucher' AND source_id=$2 FOR UPDATE",[s.oid,voucherId]);
+   if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,direction='out',category='loan_disbursement' WHERE id=$2",[cash.rows[0].id,tx.rows[0].id]);
+   else await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) SELECT $1,$2,v.voucher_date,'out','loan_disbursement',$3,'voucher',v.id,v.voucher_no,v.narration,$4 FROM vouchers v WHERE v.id=$5",[s.oid,cash.rows[0].id,Number(loan.disbursed_amount||loan.principal),s.uid||null,voucherId]);
+   await c.query("COMMIT");
+   return NextResponse.json({ok:true,message:method==="bank"?"ऋण वितरण माध्यम बैंकमा परिवर्तन भयो।":"ऋण वितरण माध्यम नगदमा परिवर्तन भयो।"});
+  }else if(action==="edit"){
    if(!["pending","approved"].includes(loan.status))throw Object.assign(new Error("वितरण भइसकेको ऋणको मूल सर्त यहाँबाट परिवर्तन गर्न मिल्दैन।"),{status:409});
    const principal=Number(b.principal),rate=Number(b.annualInterestRate),term=Number(b.termMonths),purpose=String(b.purpose||"").trim();
    const appliedOn=String(b.appliedOn||loan.applied_on).slice(0,10);
