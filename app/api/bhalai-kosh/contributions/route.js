@@ -11,7 +11,7 @@ export async function GET(request) {
     const {rows}=await getBhalaiKoshPool().query(`
       SELECT sv.id,sv.member_id,m.member_code,m.full_name,sv.period_year,sv.period_month,sv.amount,sv.paid_on,sv.payment_method,sv.receipt_no,sv.status
       FROM savings sv JOIN members m ON m.id=sv.member_id
-      WHERE sv.organization_id=$1 AND sv.period_year=$2 AND sv.period_month=$3 ORDER BY m.full_name
+      WHERE sv.organization_id=$1 AND sv.period_year=$2 AND sv.period_month=$3 AND m.status='active' ORDER BY m.full_name
     `,[s.oid,year,month]);
     return NextResponse.json({contributions:rows});
   } catch(e){console.error("Bhalai contributions GET:",e.message);return NextResponse.json({error:"योगदान विवरण ल्याउन सकिएन।"},{status:500});}
