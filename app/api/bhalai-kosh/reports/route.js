@@ -75,7 +75,7 @@ export async function GET(request) {
         GROUP BY s.period_year ORDER BY s.period_year
       `,[oid,from,to]),
       db.query(`
-        SELECT a.account_code,a.account_name,a.account_type,COALESCE(SUM(vl.credit-vl.debit),0) AS net_amount
+        SELECT a.account_code,a.account_name,a.account_type,COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit-vl.debit ELSE 0 END),0) AS net_amount
         FROM chart_of_accounts a LEFT JOIN voucher_lines vl ON vl.account_id=a.id
         LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted' AND ${range('v.voucher_date')}
         WHERE a.organization_id=$1 AND a.account_type IN ('income','expense')
