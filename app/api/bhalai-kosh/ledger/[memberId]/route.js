@@ -76,8 +76,10 @@ export async function GET(request, { params }) {
         [session.oid, id]
       ),
       db.query(
-        `SELECT COALESCE(SUM(amount),0) AS total_refunded, COUNT(*)::int AS refund_count
-         FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type='refund'`,
+        `SELECT COALESCE(SUM(amount) FILTER (WHERE transaction_type='refund'),0) AS total_refunded,
+                COALESCE(SUM(amount) FILTER (WHERE transaction_type='loan_settlement'),0) AS total_loan_settled,
+                COUNT(*) FILTER (WHERE transaction_type='refund')::int AS refund_count
+         FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type IN ('refund','loan_settlement')`,
         [session.oid, id]
       ),
       db.query(
@@ -171,6 +173,7 @@ export async function GET(request, { params }) {
     const loans = loanResult.rows[0] || {};
     const grossSavings = Number(savings.total_savings || 0);
     const totalRefunded = Number(refunds.total_refunded || 0);
+    const totalLoanSettled = Number(refunds.total_loan_settled || 0);
     return NextResponse.json({
       member: memberResult.rows[0],
       transactions: filteredTransactions,
@@ -181,7 +184,8 @@ export async function GET(request, { params }) {
         grossSavings,
         totalRefunded,
         refundCount: Number(refunds.refund_count || 0),
-        totalSavings: grossSavings - totalRefunded,
+        totalSavings: grossSavings - totalRefunded - totalLoanSettled,
+        totalLoanSettled,
         savingCount: Number(savings.saving_count || 0),
         totalDisbursed: Number(loans.total_disbursed || 0),
         principalPaid: Number(loans.principal_paid || 0),
