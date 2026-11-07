@@ -35,7 +35,7 @@ export async function PATCH(request,{params}){
    const code=method==="bank"?"1002":"1001";
    const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,method]);
    if(!cash.rowCount)throw Object.assign(new Error(method==="bank"?"सक्रिय Bank Account उपलब्ध छैन।":"सक्रिय Cash Account उपलब्ध छैन।"),{status:400});
-   const voucher=await c.query("SELECT id FROM vouchers WHERE organization_id=$1 AND reference_type='loan' AND reference_id=$2 AND status='posted' ORDER BY id DESC LIMIT 1 FOR UPDATE",[s.oid,id]);
+   const voucher=await c.query("SELECT id FROM vouchers WHERE organization_id=$1 AND reference_type IN ('loan','loan_disbursement') AND reference_id=$2 AND voucher_type='payment' AND status='posted' ORDER BY CASE WHEN reference_type='loan' THEN 0 ELSE 1 END,id DESC LIMIT 1 FOR UPDATE",[s.oid,id]);
    if(!voucher.rowCount)throw Object.assign(new Error("ऋण वितरण Voucher भेटिएन।"),{status:404});
    const voucherId=voucher.rows[0].id;
    const account=await c.query("SELECT id FROM chart_of_accounts WHERE organization_id=$1 AND account_code=$2 AND is_active=true",[s.oid,code]);
