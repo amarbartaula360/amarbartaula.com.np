@@ -9,7 +9,7 @@ export async function GET() {
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const db = getBhalaiKoshPool();
     const oid = session.oid;
-    const [loan, savings, cash, income, members] = await Promise.all([
+    const [loan, savings, cash, income, members, bankLedger] = await Promise.all([
       db.query(`
         SELECT
           COUNT(*) FILTER (WHERE l.status IN ('disbursed','closed'))::int AS issued_loan_count,
@@ -43,14 +43,18 @@ export async function GET() {
         FROM voucher_lines vl JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
         JOIN chart_of_accounts a ON a.id=vl.account_id AND a.organization_id=$1
       `, [oid]),
-      db.query("SELECT COUNT(*) FILTER (WHERE status='active')::int AS active_members FROM members WHERE organization_id=$1", [oid])
+      db.query("SELECT COUNT(*) FILTER (WHERE status='active')::int AS active_members FROM members WHERE organization_id=$1", [oid]),
+      db.query(`SELECT t.id,t.transaction_date,t.direction,t.category,t.amount,t.reference_no,t.description,a.account_name
+        FROM cash_bank_transactions t JOIN cash_bank_accounts a ON a.id=t.account_id AND a.organization_id=t.organization_id
+        WHERE t.organization_id=$1 AND a.account_type='bank'
+        ORDER BY t.transaction_date DESC,t.id DESC LIMIT 30`, [oid])
     ]);
     const l=loan.rows[0]||{}, i=income.rows[0]||{};
     const accounts=cash.rows.map(x=>({...x,balance:Number(x.balance||0)}));
     return NextResponse.json({
       loans:{issuedCount:Number(l.issued_loan_count||0),pendingCount:Number(l.pending_loan_count||0),totalIssued:Number(l.total_loan_issued||0),principalOutstanding:Number(l.principal_outstanding||0),interestOutstanding:Number(l.interest_outstanding||0),interestIncomeReceived:Number(l.interest_income_received||0),feeIncomeReceived:Number(l.fee_income_received||0)},
       savings:{total:Number(savings.rows[0]?.total_savings||0)},
-      cashBank:{accounts,total:accounts.reduce((s,x)=>s+x.balance,0),cash:accounts.filter(x=>x.account_type==='cash').reduce((s,x)=>s+x.balance,0),bank:accounts.filter(x=>x.account_type==='bank').reduce((s,x)=>s+x.balance,0)},
+      cashBank:{accounts,total:accounts.reduce((s,x)=>s+x.balance,0),cash:accounts.filter(x=>x.account_type==='cash').reduce((s,x)=>s+x.balance,0),bank:accounts.filter(x=>x.account_type==='bank').reduce((s,x)=>s+x.balance,0),bankLedger:bankLedger.rows},
       income:{interest:Number(l.interest_income_received||0),otherLoan:Number(l.fee_income_received||0),total:Number(i.total_income||0)},
       activeMembers:Number(members.rows[0]?.active_members||0)
     });
