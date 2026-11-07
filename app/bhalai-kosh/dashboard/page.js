@@ -56,6 +56,8 @@ export default function BhalaiKoshPage() {
   const [ledgerMemberId, setLedgerMemberId] = useState("");
   const [ledgerFromBs, setLedgerFromBs] = useState("2081-07-01");
   const [ledgerToBs, setLedgerToBs] = useState("");
+  const [ledgerAppliedFromBs, setLedgerAppliedFromBs] = useState("2081-07-01");
+  const [ledgerAppliedToBs, setLedgerAppliedToBs] = useState("");
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerError, setLedgerError] = useState("");
@@ -100,8 +102,8 @@ export default function BhalaiKoshPage() {
       setLedgerError("");
       try {
         const params = new URLSearchParams();
-        if (ledgerFromBs.trim()) params.set("fromBs", ledgerFromBs.trim());
-        if (ledgerToBs.trim()) params.set("toBs", ledgerToBs.trim());
+        if (ledgerAppliedFromBs.trim()) params.set("fromBs", ledgerAppliedFromBs.trim());
+        if (ledgerAppliedToBs.trim()) params.set("toBs", ledgerAppliedToBs.trim());
         const response = await fetch("/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId) + "?" + params.toString(), { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "सदस्य Ledger ल्याउन सकिएन।");
@@ -114,7 +116,7 @@ export default function BhalaiKoshPage() {
     };
     loadLedger();
     return () => controller.abort();
-  }, [authReady, active, ledgerMemberId, ledgerFromBs, ledgerToBs]);
+  }, [authReady, active, ledgerMemberId, ledgerAppliedFromBs, ledgerAppliedToBs]);
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
@@ -238,7 +240,7 @@ export default function BhalaiKoshPage() {
               <label className="text-xs font-bold text-slate-600">सम्म मिति (वि.सं.)
                 <input type="text" inputMode="numeric" value={ledgerToBs} onChange={e=>setLedgerToBs(e.target.value)} placeholder="खाली राखेमा हालसम्म" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600"/>
               </label>
-              <button onClick={()=>{setLedgerFromBs("2081-07-01");setLedgerToBs("");}} className="rounded-lg border border-emerald-200 bg-white px-4 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50">२०८१ कात्तिकदेखि</button>
+              <div className="flex gap-2"><button onClick={()=>{setLedgerFromBs("2081-07-01");setLedgerToBs("");setLedgerAppliedFromBs("2081-07-01");setLedgerAppliedToBs("");}} className="rounded-lg border border-emerald-200 bg-white px-3 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50">२०८१ कात्तिकदेखि</button><button onClick={()=>{setLedgerAppliedFromBs(ledgerFromBs);setLedgerAppliedToBs(ledgerToBs);}} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800">Filter लागू गर्नुहोस्</button></div>
               <p className="text-[11px] leading-5 text-slate-500 sm:col-span-3">मिति YYYY-MM-DD (वि.सं.) मा राख्नुहोस्। पूर्वनिर्धारित सुरु मिति २०८१-०७-०१ (कात्तिक १) हो।</p>
             </div>
             {ledgerLoading && <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ledger Database बाट लोड हुँदैछ…</p>}
