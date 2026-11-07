@@ -42,13 +42,16 @@ export async function GET(request) {
         GROUP BY s.period_year,s.period_month ORDER BY s.period_year,s.period_month
       `,[oid,from,to]),
       db.query(`
-        SELECT a.account_name,a.account_type,a.opening_balance,
-          COALESCE(SUM(CASE WHEN t.direction='in' AND ${range('t.transaction_date')} THEN t.amount ELSE 0 END),0) AS total_in,
-          COALESCE(SUM(CASE WHEN t.direction='out' AND ${range('t.transaction_date')} THEN t.amount ELSE 0 END),0) AS total_out,
-          a.opening_balance+COALESCE(SUM(CASE WHEN t.direction='in' AND t.transaction_date<=COALESCE($3::date,'9999-12-31'::date) THEN t.amount WHEN t.direction='out' AND t.transaction_date<=COALESCE($3::date,'9999-12-31'::date) THEN -t.amount ELSE 0 END),0) AS balance
-        FROM cash_bank_accounts a LEFT JOIN cash_bank_transactions t ON t.account_id=a.id AND t.organization_id=a.organization_id
-        WHERE a.organization_id=$1 AND a.is_active=true
-        GROUP BY a.id ORDER BY a.account_type,a.account_name
+        SELECT a.account_name,a.account_type,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND v.voucher_date<COALESCE($2::date,'0001-01-01'::date) THEN vl.debit-vl.credit ELSE 0 END),0) AS opening_balance,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND ${range('v.voucher_date')} THEN vl.debit ELSE 0 END),0) AS total_in,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND ${range('v.voucher_date')} THEN vl.credit ELSE 0 END),0) AS total_out,
+          COALESCE(SUM(CASE WHEN v.id IS NOT NULL AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date) THEN vl.debit-vl.credit ELSE 0 END),0) AS balance
+        FROM chart_of_accounts a
+        LEFT JOIN voucher_lines vl ON vl.account_id=a.id
+        LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
+        WHERE a.organization_id=$1 AND a.is_active=true AND a.account_code IN ('1001','1002')
+        GROUP BY a.id ORDER BY a.account_code
       `,[oid,from,to]),
       db.query(`
         SELECT v.voucher_no,v.voucher_type,v.voucher_date,v.narration,v.status,
