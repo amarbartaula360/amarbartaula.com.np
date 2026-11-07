@@ -9,6 +9,11 @@ export async function GET(){
   const {rows}=await getBhalaiKoshPool().query(`
    SELECT l.*,m.member_code,m.full_name,
     COALESCE((SELECT SUM(i.principal_due+i.interest_due+i.fee_due-i.paid_principal-i.paid_interest-i.paid_fee) FROM loan_installments i WHERE i.loan_id=l.id),0) AS scheduled_balance,
+    COALESCE((SELECT SUM(i.principal_due-i.paid_principal) FROM loan_installments i WHERE i.loan_id=l.id),0) AS principal_outstanding,
+    COALESCE((SELECT SUM(i.interest_due-i.paid_interest) FROM loan_installments i WHERE i.loan_id=l.id),0) AS interest_outstanding,
+    COALESCE((SELECT COUNT(*) FROM loan_installments i WHERE i.loan_id=l.id),0)::int AS installment_count,
+    COALESCE((SELECT COUNT(*) FROM loan_installments i WHERE i.loan_id=l.id AND i.status='paid'),0)::int AS paid_installment_count,
+    COALESCE((SELECT COUNT(*) FROM loan_installments i WHERE i.loan_id=l.id AND i.status<>'paid'),0)::int AS unpaid_installment_count,
     COALESCE((SELECT SUM(p.principal_amount) FROM loan_payments p WHERE p.loan_id=l.id),0) AS principal_paid,
     COALESCE((SELECT SUM(p.interest_amount) FROM loan_payments p WHERE p.loan_id=l.id),0) AS interest_paid,
     (SELECT MIN(i.due_date) FROM loan_installments i WHERE i.loan_id=l.id) AS first_emi_date
