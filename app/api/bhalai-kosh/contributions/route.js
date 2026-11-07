@@ -50,6 +50,6 @@ export async function POST(request) {
       [s.oid,memberId,voucherId,b.paidOn||null,amount,"मासिक सदस्य योगदान"]);
     await c.query("COMMIT");
     return NextResponse.json({ok:true,savingId:sv.rows[0].id,voucherNo:receipt},{status:201});
-  }catch(e){await c.query("ROLLBACK");return NextResponse.json({error:e.message||"योगदान पोस्ट गर्न सकिएन।"},{status:e.status||500});}
+  }catch(e){await c.query("ROLLBACK");const status=e.status||(e.code==="23505"?409:500);return NextResponse.json({error:e.code==="23505"?"यो सदस्यको यस महिनाको बचत पहिले नै दर्ता भइसकेको छ।":(e.message||"योगदान पोस्ट गर्न सकिएन।")},{status});}
   finally{c.release();}
 }
