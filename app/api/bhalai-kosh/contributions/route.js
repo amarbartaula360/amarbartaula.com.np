@@ -82,7 +82,7 @@ export async function DELETE(request) {
       const voucher=await c.query("SELECT id FROM vouchers WHERE organization_id=$1 AND voucher_no=$2 FOR UPDATE",[s.oid,saving.receipt_no]);
       if(voucher.rowCount){
         await c.query("DELETE FROM member_ledger WHERE organization_id=$1 AND member_id=$2 AND voucher_id=$3",[s.oid,saving.member_id,voucher.rows[0].id]);
-        await c.query("UPDATE vouchers SET status='voided' WHERE id=$1 AND organization_id=$2",[voucher.rows[0].id,s.oid]);
+        await c.query("UPDATE vouchers SET status='reversed' WHERE id=$1 AND organization_id=$2",[voucher.rows[0].id,s.oid]);
       }
     } else {
       await c.query(`DELETE FROM member_ledger WHERE organization_id=$1 AND member_id=$2 AND transaction_type IN ('contribution','saving')
@@ -90,7 +90,7 @@ export async function DELETE(request) {
     }
     await c.query("UPDATE savings SET status='voided' WHERE id=$1 AND organization_id=$2",[id,s.oid]);
     await c.query("COMMIT");
-    return NextResponse.json({ok:true,message:"बचत रद्द गरियो। सम्बन्धित Voucher पनि voided राखियो; पुरानो हिसाबको audit record सुरक्षित छ।"});
+    return NextResponse.json({ok:true,message:"बचत रद्द गरियो। सम्बन्धित Voucher reverse गरियो; पुरानो हिसाबको audit record सुरक्षित छ।"});
   } catch(e) {
     await c.query("ROLLBACK");
     return NextResponse.json({error:e.message||"बचत रद्द गर्न सकिएन।"},{status:e.status||500});
