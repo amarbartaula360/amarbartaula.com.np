@@ -65,9 +65,27 @@ export async function GET(request) {
         FROM loan_payments p WHERE p.organization_id=$1 AND ${range('p.paid_on')}
       `,[oid,from,to]),
       db.query(`
-        SELECT m.member_code,m.full_name,COUNT(s.id)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
-        FROM members m LEFT JOIN savings s ON s.member_id=m.id AND s.organization_id=m.organization_id AND s.status='posted' AND ${range('s.paid_on')}
-        WHERE m.organization_id=$1 GROUP BY m.id ORDER BY m.member_code
+        SELECT m.id AS member_id,m.member_code,m.full_name,
+          COALESCE(period_savings.deposit_count,0)::int AS deposit_count,
+          COALESCE(period_savings.total_savings,0) AS total_savings,
+          GREATEST(0,COALESCE(all_savings.total_deposited,0)-COALESCE(refunds.total_refunded,0)) AS current_deposit
+        FROM members m
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
+          FROM savings s WHERE s.organization_id=m.organization_id AND s.member_id=m.id
+            AND s.status='posted' AND ${range('s.paid_on')}
+        ) period_savings ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(SUM(s.amount),0) AS total_deposited
+          FROM savings s WHERE s.organization_id=m.organization_id AND s.member_id=m.id AND s.status='posted'
+        ) all_savings ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(SUM(d.amount),0) AS total_refunded
+          FROM deposits d WHERE d.organization_id=m.organization_id AND d.member_id=m.id AND d.transaction_type='refund'
+        ) refunds ON TRUE
+        WHERE m.organization_id=$1
+          AND GREATEST(0,COALESCE(all_savings.total_deposited,0)-COALESCE(refunds.total_refunded,0)) > 0
+        ORDER BY m.member_code
       `,[oid,from,to]),
       db.query(`
         SELECT s.period_year,COUNT(DISTINCT s.member_id)::int AS member_count,COUNT(*)::int AS deposit_count,COALESCE(SUM(s.amount),0) AS total_savings
