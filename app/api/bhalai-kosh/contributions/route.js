@@ -28,8 +28,9 @@ export async function POST(request) {
   const db=getBhalaiKoshPool(), c=await db.connect();
   try{
     await c.query("BEGIN");
-    const member=await c.query("SELECT id FROM members WHERE id=$1 AND organization_id=$2 AND status='active' FOR UPDATE",[memberId,s.oid]);
+    const member=await c.query("SELECT id,continue_saving FROM members WHERE id=$1 AND organization_id=$2 AND status='active' FOR UPDATE",[memberId,s.oid]);
     if(!member.rowCount) throw Object.assign(new Error("सक्रिय सदस्य भेटिएन।"),{status:404});
+    if(member.rows[0].continue_saving===false) throw Object.assign(new Error("यस सदस्यको ऋण बन्द गर्दा बचत रोकिएको छ। नयाँ मासिक बचत दर्ता गर्न मिल्दैन।"),{status:409});
     const exists=await c.query("SELECT id,status FROM savings WHERE organization_id=$1 AND member_id=$2 AND period_year=$3 AND period_month=$4 FOR UPDATE",[s.oid,memberId,year,month]);
     if(exists.rowCount && exists.rows[0].status!=="voided") throw Object.assign(new Error("यो सदस्यको यस महिनाको योगदान पहिले नै दर्ता छ।"),{status:409});
     const acc=await c.query("SELECT id,account_code FROM chart_of_accounts WHERE organization_id=$1 AND account_code IN ('1001','1002','2001')",[s.oid]);
