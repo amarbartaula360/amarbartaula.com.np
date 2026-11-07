@@ -32,7 +32,7 @@ export async function PATCH(request,{params}) {
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!narration||lines.length<2||lines.length>50)
     return NextResponse.json({error:"मिति, विवरण र कम्तीमा दुईवटा खाता लाइन आवश्यक छन्।"},{status:400});
   const normalized=lines.map(x=>({accountId:Number(x.accountId),memberId:x.memberId?Number(x.memberId):null,debit:amount(x.debit),credit:amount(x.credit),narration:String(x.narration||"").trim()}));
-  if(normalized.some(x=>!Number.isInteger(x.accountId)||x.accountId<1||x.debit<0||x.credit<0||((x.debit>0)===(x.credit>0))||(x.memberId!==null&&(!Number.isInteger(x.memberId)||x.memberId<1))))
+  if(normalized.some(x=>!Number.isInteger(x.accountId)||x.accountId<1||!Number.isFinite(x.debit)||!Number.isFinite(x.credit)||x.debit<0||x.credit<0||((x.debit>0)===(x.credit>0))||(x.memberId!==null&&(!Number.isInteger(x.memberId)||x.memberId<1))))
     return NextResponse.json({error:"प्रत्येक लाइनमा सही खाता र Debit वा Credit मध्ये एउटा मात्र रकम राख्नुहोस्।"},{status:400});
   const debit=amount(normalized.reduce((sum,x)=>sum+x.debit,0)),credit=amount(normalized.reduce((sum,x)=>sum+x.credit,0));
   if(debit<=0||Math.abs(debit-credit)>0.009)return NextResponse.json({error:"Debit र Credit बराबर हुनुपर्छ।"},{status:400});
