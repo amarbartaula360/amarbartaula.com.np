@@ -100,6 +100,27 @@ export async function GET(request) {
         GROUP BY a.id ORDER BY a.account_type,a.account_code
       `,[oid,from,to])
     ]);
+    const accountingLedger = await db.query(`
+      WITH entries AS (
+        SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,
+          v.id AS voucher_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,v.status,
+          COALESCE(vl.debit,0)::numeric AS debit,COALESCE(vl.credit,0)::numeric AS credit
+        FROM chart_of_accounts a
+        JOIN voucher_lines vl ON vl.account_id=a.id
+        JOIN vouchers v ON v.id=vl.voucher_id
+        WHERE a.organization_id=$1 AND v.organization_id=$1 AND a.is_active=true
+          AND v.status='posted' AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
+      ), balances AS (
+        SELECT *,SUM(CASE WHEN account_type IN ('asset','expense') THEN debit-credit ELSE credit-debit END)
+          OVER (PARTITION BY account_id ORDER BY voucher_date,voucher_id) AS running_balance
+        FROM entries
+      )
+      SELECT account_id,account_code,account_name,account_type,voucher_no,voucher_date,voucher_type,narration,
+        debit,credit,running_balance
+      FROM balances
+      WHERE voucher_date>=COALESCE($2::date,'0001-01-01'::date)
+      ORDER BY account_code,voucher_date,voucher_id
+    `,[oid,from,to]);
     const [trialBalance, balanceRows] = await Promise.all([
       db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
         COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit ELSE 0 END),0) AS total_debit,COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit ELSE 0 END),0) AS total_credit,
