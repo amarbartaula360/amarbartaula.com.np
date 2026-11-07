@@ -8,7 +8,7 @@ export async function GET(){
   const s=await getBhalaiKoshSession();if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
   const {rows}=await getBhalaiKoshPool().query(`
    SELECT l.*,m.member_code,m.full_name,
-    (SELECT CASE WHEN ca.account_code='1002' THEN 'bank' ELSE 'cash' END FROM vouchers v JOIN voucher_lines vl ON vl.voucher_id=v.id AND vl.credit>0 JOIN chart_of_accounts ca ON ca.id=vl.account_id WHERE v.organization_id=l.organization_id AND v.reference_type='loan' AND v.reference_id=l.id AND v.status='posted' ORDER BY v.id DESC LIMIT 1) AS disbursement_payment_method,
+    (SELECT CASE WHEN ca.account_code='1002' THEN 'bank' ELSE 'cash' END FROM vouchers v JOIN voucher_lines vl ON vl.voucher_id=v.id AND vl.credit>0 JOIN chart_of_accounts ca ON ca.id=vl.account_id WHERE v.organization_id=l.organization_id AND v.reference_type IN ('loan','loan_disbursement') AND v.reference_id=l.id AND v.voucher_type='payment' AND v.status='posted' ORDER BY CASE WHEN v.reference_type='loan' THEN 0 ELSE 1 END,v.id DESC LIMIT 1) AS disbursement_payment_method,
     COALESCE((SELECT SUM(i.principal_due+i.interest_due+i.fee_due-i.paid_principal-i.paid_interest-i.paid_fee) FROM loan_installments i WHERE i.loan_id=l.id),0) AS scheduled_balance,
     COALESCE((SELECT SUM(i.principal_due-i.paid_principal) FROM loan_installments i WHERE i.loan_id=l.id),0) AS principal_outstanding,
     COALESCE((SELECT SUM(i.interest_due-i.paid_interest) FROM loan_installments i WHERE i.loan_id=l.id),0) AS interest_outstanding,
