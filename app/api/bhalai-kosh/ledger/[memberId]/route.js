@@ -111,6 +111,7 @@ export async function GET(request, { params }) {
         `SELECT l.id::text AS id, l.disbursed_on::text AS transaction_date, 'loan_disbursement' AS transaction_type,
                 COALESCE(l.disbursed_amount,l.principal) AS debit, 0::numeric AS credit,
                 'ऋण वितरण (पुरानो ऋण रेकर्ड)' AS narration, NULL::bigint AS voucher_id,
+                NULL::numeric AS principal_amount,NULL::numeric AS interest_amount,NULL::numeric AS fee_amount,NULL::varchar AS payment_method,
                 COALESCE(l.disbursed_amount,l.principal) AS disbursed_amount
          FROM loans l
          WHERE l.organization_id=$1 AND l.member_id=$2 AND l.status IN ('disbursed','closed')
@@ -126,7 +127,7 @@ export async function GET(request, { params }) {
          SELECT p.id::text AS id, p.paid_on::text AS transaction_date, 'loan_repayment' AS transaction_type,
                 0::numeric AS debit, (p.principal_amount+p.interest_amount+p.fee_amount) AS credit,
                 'ऋण किस्ता प्राप्ति (पुरानो भुक्तानी)' AS narration, NULL::bigint AS voucher_id,
-                p.principal_amount,p.interest_amount,p.fee_amount,p.payment_method
+                p.principal_amount,p.interest_amount,p.fee_amount,p.payment_method,NULL::numeric AS disbursed_amount
          FROM loan_payments p
          WHERE p.organization_id=$1 AND p.member_id=$2
            AND NOT EXISTS (
