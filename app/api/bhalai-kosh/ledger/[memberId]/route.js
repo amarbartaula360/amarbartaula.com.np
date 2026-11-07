@@ -72,6 +72,7 @@ export async function GET(request, { params }) {
              COALESCE((SELECT SUM(p.principal_amount) FROM loan_payments p WHERE p.organization_id=$1 AND p.member_id=$2),0) AS principal_outstanding,
            COALESCE((SELECT SUM(p.principal_amount) FROM loan_payments p WHERE p.organization_id=$1 AND p.member_id=$2),0) AS principal_paid,
            COALESCE((SELECT SUM(p.interest_amount+p.fee_amount) FROM loan_payments p WHERE p.organization_id=$1 AND p.member_id=$2),0) AS interest_paid,
+           COALESCE((SELECT SUM(i.interest_due-i.paid_interest) FROM loan_installments i JOIN loans lx ON lx.id=i.loan_id WHERE lx.organization_id=$1 AND lx.member_id=$2 AND lx.status IN ('disbursed','closed')),0) AS interest_outstanding,
            COUNT(*) FILTER (WHERE status IN ('disbursed','closed'))::int AS loan_count
          FROM loans WHERE organization_id=$1 AND member_id=$2`,
         [session.oid, id]
@@ -161,6 +162,7 @@ export async function GET(request, { params }) {
         principalPaid: Number(loans.principal_paid || 0),
         principalOutstanding: Number(loans.principal_outstanding || 0),
         interestPaid: Number(loans.interest_paid || 0),
+        interestOutstanding: Number(loans.interest_outstanding || 0),
         loanCount: Number(loans.loan_count || 0),
         ledgerBalance: runningBalance
       }
