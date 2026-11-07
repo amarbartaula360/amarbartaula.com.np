@@ -55,9 +55,19 @@ export async function GET(request, { params }) {
     // expose older savings/loan records that pre-date ledger posting without mutating data.
     const [ledgerResult, savingsResult, refundResult, loanResult, legacySavingsResult, legacyLoanResult] = await Promise.all([
       db.query(
-        `SELECT id::text AS id, transaction_date::text AS transaction_date, transaction_type, debit, credit, narration, voucher_id
-         FROM member_ledger
-         WHERE organization_id = $1 AND member_id = $2`,
+        `SELECT ml.id::text AS id, ml.transaction_date::text AS transaction_date, ml.transaction_type, ml.debit, ml.credit, ml.narration, ml.voucher_id,
+          v.reference_type,v.reference_id,lp.principal_amount,lp.interest_amount,lp.fee_amount,lp.payment_method,
+          sv.amount AS saving_amount,sv.payment_method AS saving_method,
+          COALESCE(l.disbursed_amount,l.principal) AS disbursed_amount,
+          CASE WHEN cb.account_type='bank' THEN 'bank' ELSE 'cash' END AS disbursement_method
+         FROM member_ledger ml
+         LEFT JOIN vouchers v ON v.id=ml.voucher_id AND v.organization_id=ml.organization_id
+         LEFT JOIN loan_payments lp ON v.reference_type='loan_payment' AND lp.id=v.reference_id AND lp.organization_id=ml.organization_id
+         LEFT JOIN savings sv ON sv.receipt_no=v.voucher_no AND sv.organization_id=ml.organization_id AND sv.member_id=ml.member_id
+         LEFT JOIN loans l ON v.reference_type='loan_disbursement' AND l.id=v.reference_id AND l.organization_id=ml.organization_id
+         LEFT JOIN cash_bank_transactions cbtx ON cbtx.organization_id=ml.organization_id AND cbtx.source_id=ml.voucher_id AND cbtx.source_type='voucher'
+         LEFT JOIN cash_bank_accounts cb ON cb.id=cbtx.account_id
+         WHERE ml.organization_id = $1 AND ml.member_id = $2`,
         [session.oid, id]
       ),
       db.query(
@@ -85,7 +95,8 @@ export async function GET(request, { params }) {
       db.query(
         `SELECT s.id::text AS id, s.paid_on::text AS transaction_date, 'contribution' AS transaction_type,
                 0::numeric AS debit, s.amount AS credit,
-                'मासिक बचत (पुरानो बचत रेकर्ड)' AS narration, NULL::bigint AS voucher_id
+                'मासिक बचत (पुरानो बचत रेकर्ड)' AS narration, NULL::bigint AS voucher_id,
+                s.amount AS saving_amount,s.payment_method AS payment_method
          FROM savings s
          WHERE s.organization_id=$1 AND s.member_id=$2 AND s.status='posted'
            AND NOT EXISTS (
@@ -99,7 +110,8 @@ export async function GET(request, { params }) {
       db.query(
         `SELECT l.id::text AS id, l.disbursed_on::text AS transaction_date, 'loan_disbursement' AS transaction_type,
                 COALESCE(l.disbursed_amount,l.principal) AS debit, 0::numeric AS credit,
-                'ऋण वितरण (पुरानो ऋण रेकर्ड)' AS narration, NULL::bigint AS voucher_id
+                'ऋण वितरण (पुरानो ऋण रेकर्ड)' AS narration, NULL::bigint AS voucher_id,
+                COALESCE(l.disbursed_amount,l.principal) AS disbursed_amount
          FROM loans l
          WHERE l.organization_id=$1 AND l.member_id=$2 AND l.status IN ('disbursed','closed')
            AND l.disbursed_on IS NOT NULL
@@ -113,7 +125,8 @@ export async function GET(request, { params }) {
          UNION ALL
          SELECT p.id::text AS id, p.paid_on::text AS transaction_date, 'loan_repayment' AS transaction_type,
                 0::numeric AS debit, (p.principal_amount+p.interest_amount+p.fee_amount) AS credit,
-                'ऋण किस्ता प्राप्ति (पुरानो भुक्तानी)' AS narration, NULL::bigint AS voucher_id
+                'ऋण किस्ता प्राप्ति (पुरानो भुक्तानी)' AS narration, NULL::bigint AS voucher_id,
+                p.principal_amount,p.interest_amount,p.fee_amount,p.payment_method
          FROM loan_payments p
          WHERE p.organization_id=$1 AND p.member_id=$2
            AND NOT EXISTS (
