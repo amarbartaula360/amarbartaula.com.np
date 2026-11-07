@@ -112,7 +112,7 @@ export async function GET(request) {
         WHERE a.organization_id=$1 AND a.is_active=true
         GROUP BY a.id
       ), entries AS (
-        SELECT a.id AS account_id,a.account_code,a.account_name,a.account_type,a.opening_balance,
+        SELECT a.account_id,a.account_code,a.account_name,a.account_type,a.opening_balance,
           v.id AS voucher_id,vl.id AS voucher_line_id,v.voucher_no,v.voucher_date,v.voucher_type,v.narration,
           COALESCE(vl.debit,0)::numeric AS debit,COALESCE(vl.credit,0)::numeric AS credit
         FROM account_opening a
