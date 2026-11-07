@@ -48,10 +48,10 @@ export async function GET() {
     const l=loan.rows[0]||{}, i=income.rows[0]||{};
     const accounts=cash.rows.map(x=>({...x,balance:Number(x.balance||0)}));
     return NextResponse.json({
-      loans:{issuedCount:Number(l.issued_loan_count||0),pendingCount:Number(l.pending_loan_count||0),totalIssued:Number(l.total_loan_issued||0),principalOutstanding:Number(l.principal_outstanding||0),interestOutstanding:Number(l.interest_outstanding||0),interestIncomeReceived:Number(i.interest_income||l.interest_income_received||0),feeIncomeReceived:Number(l.fee_income_received||0)},
+      loans:{issuedCount:Number(l.issued_loan_count||0),pendingCount:Number(l.pending_loan_count||0),totalIssued:Number(l.total_loan_issued||0),principalOutstanding:Number(l.principal_outstanding||0),interestOutstanding:Number(l.interest_outstanding||0),interestIncomeReceived:Number(l.interest_income_received||0),feeIncomeReceived:Number(l.fee_income_received||0)},
       savings:{total:Number(savings.rows[0]?.total_savings||0)},
       cashBank:{accounts,total:accounts.reduce((s,x)=>s+x.balance,0),cash:accounts.filter(x=>x.account_type==='cash').reduce((s,x)=>s+x.balance,0),bank:accounts.filter(x=>x.account_type==='bank').reduce((s,x)=>s+x.balance,0)},
-      income:{interest:Number(i.interest_income||0),otherLoan:Number(i.other_loan_income||0),total:Number(i.total_income||0)},
+      income:{interest:Number(l.interest_income_received||0),otherLoan:Number(l.fee_income_received||0),total:Number(i.total_income||0)},
       activeMembers:Number(members.rows[0]?.active_members||0)
     });
   } catch (error) {
