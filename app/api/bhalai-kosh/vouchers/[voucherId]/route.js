@@ -79,3 +79,31 @@ export async function PATCH(request,{params}) {
   }catch(e){await c.query("ROLLBACK");console.error("Voucher PATCH",e);return NextResponse.json({error:e.message||"Voucher सम्पादन गर्न सकिएन।"},{status:e.status||500});}
   finally{c.release();}
 }
+
+
+export async function DELETE(_request,{params}) {
+  const session=await getBhalaiKoshSession();
+  if(!session?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!allowed.includes(session.role))return NextResponse.json({error:"Permission denied"},{status:403});
+  const {voucherId}=await params;
+  const db=getBhalaiKoshPool(),c=await db.connect();
+  try {
+    await c.query("BEGIN");
+    const found=await c.query(`SELECT id,status,reference_type,reference_id,voucher_no
+      FROM vouchers WHERE id=$1 AND organization_id=$2 FOR UPDATE`,[voucherId,session.oid]);
+    if(!found.rowCount)throw Object.assign(new Error("Voucher भेटिएन।"),{status:404});
+    const v=found.rows[0];
+    if(v.status!=="posted")throw Object.assign(new Error("Posted Voucher मात्र हटाउन मिल्छ।"),{status:409});
+    if(v.reference_type||v.reference_id)throw Object.assign(new Error("मूल बचत/ऋण कारोबारसँग जोडिएको Voucher यहाँबाट हटाउन मिल्दैन। सम्बन्धित कारोबारबाट मात्र सच्याउनुहोस्।"),{status:409});
+    await c.query("DELETE FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='voucher' AND source_id=$2",[session.oid,v.id]);
+    await c.query("DELETE FROM member_ledger WHERE organization_id=$1 AND voucher_id=$2",[session.oid,v.id]);
+    await c.query("DELETE FROM voucher_lines WHERE voucher_id=$1",[v.id]);
+    await c.query("DELETE FROM vouchers WHERE id=$1 AND organization_id=$2",[v.id,session.oid]);
+    await c.query("COMMIT");
+    return NextResponse.json({ok:true,message:"Voucher र सम्बन्धित Ledger/Cash-Bank कारोबार हटाइयो।"});
+  } catch(e) {
+    await c.query("ROLLBACK");
+    console.error("Voucher DELETE",e);
+    return NextResponse.json({error:e.message||"Voucher हटाउन सकिएन।"},{status:e.status||500});
+  } finally { c.release(); }
+}
