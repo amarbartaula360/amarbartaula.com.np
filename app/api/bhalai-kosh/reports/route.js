@@ -139,9 +139,9 @@ export async function GET(request) {
         FROM chart_of_accounts a
         LEFT JOIN voucher_lines vl ON vl.account_id=a.id
         LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
-          AND v.voucher_date<=COALESCE($3::date,'9999-12-31'::date)
+          AND v.voucher_date<=COALESCE($2::date,'9999-12-31'::date)
         WHERE a.organization_id=$1 AND a.is_active=true
-        GROUP BY a.id ORDER BY a.account_code`,[oid,from,to]),
+        GROUP BY a.id ORDER BY a.account_code`,[oid,to]),
       db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
         COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit ELSE 0 END),0) AS total_debit,
         COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit ELSE 0 END),0) AS total_credit,
