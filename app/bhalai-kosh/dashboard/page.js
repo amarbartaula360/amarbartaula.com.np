@@ -40,7 +40,9 @@ const reportConfigs = {
   vouchers: { label:"Voucher प्रतिवेदन", columns:[["voucher_date","मिति"],["voucher_no","Voucher नं."],["voucher_type","प्रकार"],["narration","विवरण"],["debit","Debit"],["credit","Credit"],["status","स्थिति"]] },
   memberSavings: { label:"सदस्यगत बचत तथा Current Deposit", columns:[["member_code","सदस्य नं."],["full_name","सदस्यको नाम"],["deposit_count","जम्मा पटक"],["total_savings","छानिएको अवधिको बचत"],["current_deposit","Current Deposit (हाल कायम बचत)"]] },
   annualSavings: { label:"वार्षिक कोष विवरण", columns:[["period_year","वि.सं. वर्ष"],["member_count","सदस्य संख्या"],["deposit_count","जम्मा संख्या"],["total_savings","वार्षिक बचत"]] },
-  incomeStatement: { label:"आम्दानी तथा खर्च", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","प्रकार"],["net_amount","कुल रकम"]] }
+  incomeStatement: { label:"आम्दानी तथा खर्च", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","प्रकार"],["net_amount","कुल रकम"]] },
+  trialBalance: { label:"Trial Balance (तलबी परीक्षण)", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","खाता प्रकार"],["total_debit","कुल Debit"],["total_credit","कुल Credit"],["debit_balance","Debit Balance"],["credit_balance","Credit Balance"]] },
+  balanceSheet: { label:"Balance Sheet (वासलात)", columns:[["account_code","खाता कोड"],["account_name","खाताको नाम"],["account_type","खाता प्रकार"],["balance","मौज्दात"]] }
 };
 
 export default function BhalaiKoshPage() {
@@ -216,7 +218,12 @@ export default function BhalaiKoshPage() {
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
   const currentReport = reportConfigs[reportType];
-  const currentReportRows = reportData?.[reportType] || [];
+  const currentReportRows = reportType==="balanceSheet" ? [
+    ...(reportData?.balanceSheet?.assets||[]).map(x=>({...x,section:"सम्पत्ति",balance:x.balance})),
+    ...(reportData?.balanceSheet?.liabilities||[]).map(x=>({...x,section:"दायित्व",balance:x.balance})),
+    ...(reportData?.balanceSheet?.equity||[]).map(x=>({...x,section:"कोष/पूँजी",balance:x.balance})),
+    {account_code:"",account_name:"चालु अवधिको खुद आम्दानी",account_type:"equity",balance:reportData?.balanceSheet?.netIncome||0}
+  ] : (reportData?.[reportType] || []);
   const exportCurrentReport = () => {
     if (!currentReportRows.length) { setReportError("डाउनलोड गर्न प्रतिवेदन विवरण छैन।"); return; }
     const columns = currentReport.columns;
@@ -346,12 +353,14 @@ export default function BhalaiKoshPage() {
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-2">{Object.entries(reportConfigs).map(([key,value])=><button key={key} onClick={()=>setReportType(key)} className={"rounded-lg px-3 py-2 text-xs font-bold "+(reportType===key?"bg-emerald-700 text-white":"border bg-white text-slate-600")}>{value.label}</button>)}</div>
+              {reportType==="trialBalance"&&<div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm"><b>जम्मा Debit: रु. {money(currentReportRows.reduce((s,x)=>s+Number(x.total_debit||0),0))}</b><span className="ml-5"><b>जम्मा Credit: रु. {money(currentReportRows.reduce((s,x)=>s+Number(x.total_credit||0),0))}</b></span></div>}
+              {reportType==="balanceSheet"&&<div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-blue-50 p-4"><p className="text-xs">कुल सम्पत्ति</p><b className="text-xl">रु. {money(reportData?.balanceSheet?.totalAssets||0)}</b></div><div className="rounded-xl bg-amber-50 p-4"><p className="text-xs">कुल दायित्व</p><b className="text-xl">रु. {money(reportData?.balanceSheet?.totalLiabilities||0)}</b></div><div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs">दायित्व + कोष + खुद आम्दानी</p><b className="text-xl">रु. {money(reportData?.balanceSheet?.totalLiabilitiesEquity||0)}</b></div></div>}
               {reportType==="memberSavings" && <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-800">जम्मा Current Deposit (हाल कायम बचत)</p><p className="mt-1 text-2xl font-black text-emerald-950">रु. {money((reportData?.memberSavings||[]).reduce((sum,row)=>sum+Number(row.current_deposit||0),0))}</p><p className="mt-1 text-xs text-emerald-800">बचत फिर्ता घटाएर बाँकी रहेको रकम मात्र</p></div>}
               {reportData?.summary && <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[[ "कुल साँवा असुली",reportData.summary.principal_collected ],["ब्याज आम्दानी",reportData.summary.interest_income],["शुल्क/जरिवाना",reportData.summary.fee_income],["किस्ता संख्या",reportData.summary.payment_count]].map(([label,value])=><div key={label} className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">{label}</p><b className="mt-1 block text-lg">{label==="किस्ता संख्या"?value:"रु. "+money(value)}</b></div>)}
               </div>}
               {reportError&&<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
-              {reportLoading?<p className="p-8 text-center text-sm text-slate-500">प्रतिवेदन तयार हुँदैछ…</p>:<div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{currentReport.columns.map(([key,label])=><th key={key} className="px-3 py-3">{label}</th>)}</tr></thead><tbody>{currentReportRows.map((row,index)=><tr key={row.id||row.receipt_no||row.voucher_no||index} className="border-t border-slate-100">{currentReport.columns.map(([key])=><td key={key} className="px-3 py-3 whitespace-nowrap">{key==="period_month"?nepaliMonths[Number(row[key])-1]:["principal","disbursed_amount","principal_outstanding","interest_outstanding","principal_paid","interest_paid","principal_amount","interest_amount","fee_amount","amount","opening_balance","total_in","total_out","balance","debit","credit","total_savings","current_deposit","net_amount","deposit_count","member_count"].includes(key)?money(row[key]):key.endsWith("_on")||key.endsWith("_date")?toBsDate(row[key]):String(row[key]??"—")}</td>)}</tr>)}{!currentReportRows.length&&<tr><td colSpan={currentReport.columns.length} className="px-4 py-8 text-center text-slate-400">यस मिति दायरामा विवरण भेटिएन।</td></tr>}</tbody></table></div>}
+              {reportLoading?<p className="p-8 text-center text-sm text-slate-500">प्रतिवेदन तयार हुँदैछ…</p>:<div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{currentReport.columns.map(([key,label])=><th key={key} className="px-3 py-3">{label}</th>)}</tr></thead><tbody>{currentReportRows.map((row,index)=><tr key={row.id||row.receipt_no||row.voucher_no||index} className="border-t border-slate-100">{currentReport.columns.map(([key])=><td key={key} className="px-3 py-3 whitespace-nowrap">{key==="period_month"?nepaliMonths[Number(row[key])-1]:["principal","disbursed_amount","principal_outstanding","interest_outstanding","principal_paid","interest_paid","principal_amount","interest_amount","fee_amount","amount","opening_balance","total_in","total_out","balance","debit","credit","total_debit","total_credit","debit_balance","credit_balance","balance","total_savings","current_deposit","net_amount","deposit_count","member_count"].includes(key)?money(row[key]):key.endsWith("_on")||key.endsWith("_date")?toBsDate(row[key]):key==="account_type"?({asset:"सम्पत्ति",liability:"दायित्व",equity:"पूँजी/कोष",income:"आम्दानी",expense:"खर्च"}[row[key]]||row[key]):String(row[key]??"—")}</td>)}</tr>)}{!currentReportRows.length&&<tr><td colSpan={currentReport.columns.length} className="px-4 py-8 text-center text-slate-400">यस मिति दायरामा विवरण भेटिएन।</td></tr>}</tbody></table></div>}
             </article>
           </div>}
           {active === "Ledger" && <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
