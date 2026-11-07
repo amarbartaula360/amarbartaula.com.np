@@ -55,7 +55,7 @@ export async function GET(request, { params }) {
     // expose older savings/loan records that pre-date ledger posting without mutating data.
     const [ledgerResult, savingsResult, refundResult, loanResult, legacySavingsResult, legacyLoanResult] = await Promise.all([
       db.query(
-        `SELECT id::text AS id, transaction_date, transaction_type, debit, credit, narration, voucher_id
+        `SELECT id::text AS id, transaction_date::text AS transaction_date, transaction_type, debit, credit, narration, voucher_id
          FROM member_ledger
          WHERE organization_id = $1 AND member_id = $2`,
         [session.oid, id]
@@ -83,7 +83,7 @@ export async function GET(request, { params }) {
         [session.oid, id]
       ),
       db.query(
-        `SELECT s.id::text AS id, s.paid_on AS transaction_date, 'contribution' AS transaction_type,
+        `SELECT s.id::text AS id, s.paid_on::text AS transaction_date, 'contribution' AS transaction_type,
                 0::numeric AS debit, s.amount AS credit,
                 'मासिक बचत (पुरानो बचत रेकर्ड)' AS narration, NULL::bigint AS voucher_id
          FROM savings s
@@ -97,7 +97,7 @@ export async function GET(request, { params }) {
         [session.oid, id]
       ),
       db.query(
-        `SELECT l.id::text AS id, l.disbursed_on AS transaction_date, 'loan_disbursement' AS transaction_type,
+        `SELECT l.id::text AS id, l.disbursed_on::text AS transaction_date, 'loan_disbursement' AS transaction_type,
                 COALESCE(l.disbursed_amount,l.principal) AS debit, 0::numeric AS credit,
                 'ऋण वितरण (पुरानो ऋण रेकर्ड)' AS narration, NULL::bigint AS voucher_id
          FROM loans l
@@ -111,7 +111,7 @@ export async function GET(request, { params }) {
                AND ml.debit=COALESCE(l.disbursed_amount,l.principal)
            )
          UNION ALL
-         SELECT p.id::text AS id, p.paid_on AS transaction_date, 'loan_repayment' AS transaction_type,
+         SELECT p.id::text AS id, p.paid_on::text AS transaction_date, 'loan_repayment' AS transaction_type,
                 0::numeric AS debit, (p.principal_amount+p.interest_amount+p.fee_amount) AS credit,
                 'ऋण किस्ता प्राप्ति (पुरानो भुक्तानी)' AS narration, NULL::bigint AS voucher_id
          FROM loan_payments p
