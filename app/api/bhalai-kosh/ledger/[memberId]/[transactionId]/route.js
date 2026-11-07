@@ -49,8 +49,18 @@ export async function PATCH(request,{params}){
     if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='in',category='saving' WHERE id=$4",[ca.rows[0].id,date,amount,tx.rows[0].id]);
     else await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'in','saving',$4,'voucher',$5,$6,'मासिक बचत',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,voucher.voucher_no,s.uid||null]);
    }else{
-    if(ledger)await c.query("UPDATE member_ledger SET transaction_date=$1,credit=$2,debit=0,narration=COALESCE(narration,'मासिक बचत') WHERE id=$3",[date,amount,ledger.id]);
-    if(!saving)throw Object.assign(new Error("सम्बन्धित बचत Ledger भेटिएन।"),{status:404});
+    const codes=await c.query("SELECT id,account_code FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[cashCode(method),"2001"]]);
+    const a=Object.fromEntries(codes.rows.map(x=>[x.account_code,x.id]));
+    if(!a[cashCode(method)]||!a["2001"])throw new Error("Cash/Bank वा बचत खाता उपलब्ध छैन।");
+    const ca=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND is_active=true AND account_type=$2 ORDER BY id LIMIT 1",[s.oid,cashCode(method)==="1002"?"bank":"cash"]);
+    if(!ca.rowCount)throw Object.assign(new Error("छानिएको Cash/Bank खाता सक्रिय छैन।"),{status:400});
+    const no="BK-LEDGER-SV-"+Date.now();
+    const vv=await c.query("INSERT INTO vouchers(organization_id,voucher_no,voucher_type,voucher_date,narration,reference_type,reference_id,status,created_by,posted_at) VALUES($1,$2,'receipt',$3,'Ledger बचत सम्पादन','saving',$4,'posted',$5,now()) RETURNING id",[s.oid,no,date,mid,s.uid||null]);
+    voucherId=Number(vv.rows[0].id);
+    await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,'मासिक बचत'),($1,$5,$3,0,$4,'मासिक बचत')",[voucherId,a[cashCode(method)],mid,amount,a["2001"]]);
+    if(ledger)await c.query("UPDATE member_ledger SET voucher_id=$1,transaction_date=$2,credit=$3,debit=0 WHERE id=$4",[voucherId,date,amount,ledger.id]);
+    else await c.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,credit,narration) VALUES($1,$2,$3,$4,'contribution',$5,'मासिक बचत')",[s.oid,mid,voucherId,date,amount]);
+    await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'in','saving',$4,'voucher',$5,$6,'मासिक बचत',$7)",[s.oid,ca.rows[0].id,date,amount,voucherId,no,s.uid||null]);
    }
    await c.query("COMMIT");return NextResponse.json({ok:true,message:"बचत कारोबार सम्पादन भयो।"});
   }
