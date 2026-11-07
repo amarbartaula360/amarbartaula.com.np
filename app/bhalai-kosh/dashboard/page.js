@@ -54,6 +54,8 @@ export default function BhalaiKoshPage() {
   const [savingMemberId, setSavingMemberId] = useState(null);
   const [annualRows, setAnnualRows] = useState([]);
   const [ledgerMemberId, setLedgerMemberId] = useState("");
+  const [ledgerFromBs, setLedgerFromBs] = useState("2081-07-01");
+  const [ledgerToBs, setLedgerToBs] = useState("");
   const [ledgerData, setLedgerData] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerError, setLedgerError] = useState("");
@@ -97,7 +99,10 @@ export default function BhalaiKoshPage() {
       setLedgerLoading(true);
       setLedgerError("");
       try {
-        const response = await fetch("/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId), { signal: controller.signal });
+        const params = new URLSearchParams();
+        if (ledgerFromBs.trim()) params.set("fromBs", ledgerFromBs.trim());
+        if (ledgerToBs.trim()) params.set("toBs", ledgerToBs.trim());
+        const response = await fetch("/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId) + "?" + params.toString(), { signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "सदस्य Ledger ल्याउन सकिएन।");
         setLedgerData(data);
@@ -109,7 +114,7 @@ export default function BhalaiKoshPage() {
     };
     loadLedger();
     return () => controller.abort();
-  }, [authReady, active, ledgerMemberId]);
+  }, [authReady, active, ledgerMemberId, ledgerFromBs, ledgerToBs]);
   const filtered = useMemo(() => members.filter(m => (m.name + m.id + m.phone).toLowerCase().includes(query.toLowerCase())), [members, query]);
   const totalSavings = members.reduce((s, m) => s + m.savings, 0);
   const outstanding = members.reduce((s, m) => s + m.loan, 0);
@@ -226,6 +231,16 @@ export default function BhalaiKoshPage() {
                 </select>
               </label>
             </div>
+            <div className="mt-5 grid gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <label className="text-xs font-bold text-slate-600">देखि मिति (वि.सं.)
+                <input type="text" inputMode="numeric" value={ledgerFromBs} onChange={e=>setLedgerFromBs(e.target.value)} placeholder="२०८१-०७-०१" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600"/>
+              </label>
+              <label className="text-xs font-bold text-slate-600">सम्म मिति (वि.सं.)
+                <input type="text" inputMode="numeric" value={ledgerToBs} onChange={e=>setLedgerToBs(e.target.value)} placeholder="खाली राखेमा हालसम्म" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600"/>
+              </label>
+              <button onClick={()=>{setLedgerFromBs("2081-07-01");setLedgerToBs("");}} className="rounded-lg border border-emerald-200 bg-white px-4 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50">२०८१ कात्तिकदेखि</button>
+              <p className="text-[11px] leading-5 text-slate-500 sm:col-span-3">मिति YYYY-MM-DD (वि.सं.) मा राख्नुहोस्। पूर्वनिर्धारित सुरु मिति २०८१-०७-०१ (कात्तिक १) हो।</p>
+            </div>
             {ledgerLoading && <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ledger Database बाट लोड हुँदैछ…</p>}
             {ledgerError && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{ledgerError}</p>}
             {ledgerData && <><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -235,7 +250,8 @@ export default function BhalaiKoshPage() {
               <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">तिरेको ऋणको मूलधन</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.principalPaid||0)}</p><p className="text-xs text-slate-500">ब्याज/जरिवाना: रु. {money(ledgerData.summary?.interestPaid||0)}</p></div>
               <div className="rounded-xl bg-rose-50 p-4"><p className="text-xs font-semibold text-rose-800">बाँकी ऋण मूलधन</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.principalOutstanding||0)}</p><p className="text-xs text-rose-700">Ledger balance: रु. {money(ledgerData.summary?.ledgerBalance||0)}</p></div>
             </div>
-            <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[760px] text-left text-sm">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600"><span>अघिल्लो बाँकी (Opening Balance): <b className="text-slate-900">रु. {money(ledgerData.openingBalance||0)}</b></span><span>फिल्टरपछि अन्तिम Balance: <b className="text-emerald-800">रु. {money(ledgerData.closingBalance||0)}</b></span></div>
+            <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
               <tbody>{(ledgerData.transactions||[]).map((row,index)=><tr key={row.id||index} className="border-t border-slate-100"><td className="px-4 py-3 whitespace-nowrap">{row.transaction_date ? new Date(String(row.transaction_date).slice(0,10)+"T12:00:00").toLocaleDateString("ne-NP-u-ca-bikram") : "—"}</td><td className="px-4 py-3">{row.transaction_type}</td><td className="px-4 py-3">{row.narration||"—"}</td><td className="px-4 py-3 text-right">{money(row.debit)}</td><td className="px-4 py-3 text-right">{money(row.credit)}</td><td className="px-4 py-3 text-right font-bold">{money(row.running_balance)}</td></tr>)}
                 {!ledgerData.transactions?.length && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-400">यस सदस्यको Ledger मा कारोबार भेटिएन। पहिले Opening Balance वा बचत कारोबार दर्ता गर्नुहोस्।</td></tr>}
