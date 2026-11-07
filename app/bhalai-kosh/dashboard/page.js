@@ -218,7 +218,7 @@ export default function BhalaiKoshPage() {
           {active === "Reports" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">वित्तीय प्रतिवेदन</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{["मासिक बचत प्रतिवेदन","वार्षिक कोष विवरण","सदस्यगत बचत विवरण","ऋण तथा बाँकी किस्ता","बैंक/नगद मिलान","जरिवाना तथा अतिरिक्त रकम"].map(x=><div key={x} className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">{x}<Download size={16} className="text-slate-400"/></div>)}</div></article>}
           {active === "Ledger" && <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div><h2 className="font-extrabold">व्यक्तिगत सदस्य Ledger</h2><p className="mt-1 text-sm text-slate-500">Database मा सुरक्षित सदस्य कारोबार र प्रत्येक कारोबारपछिको बाँकी रकम।</p></div>
+              <div><h2 className="font-extrabold">व्यक्तिगत सदस्य Ledger</h2><p className="mt-1 text-sm text-slate-500">बचत जम्मा, ऋण वितरण, किस्ता भुक्तानी र प्रत्येक कारोबारपछिको Ledger विवरण एउटै ठाउँमा।</p></div>
               <label className="w-full text-xs font-semibold text-slate-600 sm:max-w-sm">सदस्य छान्नुहोस्
                 <select value={ledgerMemberId} onChange={e=>setLedgerMemberId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm">
                   <option value="">-- सदस्य चयन गर्नुहोस् --</option>
@@ -228,10 +228,12 @@ export default function BhalaiKoshPage() {
             </div>
             {ledgerLoading && <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Ledger Database बाट लोड हुँदैछ…</p>}
             {ledgerError && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{ledgerError}</p>}
-            {ledgerData && <><div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {ledgerData && <><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-800">सदस्य</p><p className="mt-1 font-extrabold text-emerald-950">{ledgerData.member.full_name}</p><p className="text-xs text-emerald-800">{ledgerData.member.member_code}</p></div>
-              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">कुल जम्मा Credit</p><p className="mt-1 text-xl font-black">{money((ledgerData.transactions||[]).reduce((s,x)=>s+Number(x.credit||0),0))}</p></div>
-              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">हालको बाँकी Balance</p><p className="mt-1 text-xl font-black">{money(ledgerData.transactions?.length ? ledgerData.transactions[ledgerData.transactions.length-1].running_balance : 0)}</p></div>
+              <div className="rounded-xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-800">कुल बचत जम्मा</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.totalSavings||0)}</p><p className="text-xs text-emerald-700">{ledgerData.summary?.savingCount||0} पटक</p></div>
+              <div className="rounded-xl bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-800">कुल ऋण वितरण</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.totalDisbursed||0)}</p><p className="text-xs text-amber-700">{ledgerData.summary?.loanCount||0} वटा ऋण</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">तिरेको ऋणको मूलधन</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.principalPaid||0)}</p><p className="text-xs text-slate-500">ब्याज/जरिवाना: रु. {money(ledgerData.summary?.interestPaid||0)}</p></div>
+              <div className="rounded-xl bg-rose-50 p-4"><p className="text-xs font-semibold text-rose-800">बाँकी ऋण मूलधन</p><p className="mt-1 text-xl font-black">रु. {money(ledgerData.summary?.principalOutstanding||0)}</p><p className="text-xs text-rose-700">Ledger balance: रु. {money(ledgerData.summary?.ledgerBalance||0)}</p></div>
             </div>
             <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-3">मिति</th><th className="px-4 py-3">कारोबार</th><th className="px-4 py-3">विवरण</th><th className="px-4 py-3 text-right">Debit</th><th className="px-4 py-3 text-right">Credit</th><th className="px-4 py-3 text-right">Balance</th></tr></thead>
