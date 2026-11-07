@@ -103,8 +103,8 @@ export async function GET(request) {
     const [trialBalance, balanceRows] = await Promise.all([
       db.query(`SELECT a.id,a.account_code,a.account_name,a.account_type,
         COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit ELSE 0 END),0) AS total_debit,COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit ELSE 0 END),0) AS total_credit,
-        GREATEST(0,COALESCE(SUM(vl.debit-vl.credit),0)) AS debit_balance,
-        GREATEST(0,COALESCE(SUM(vl.credit-vl.debit),0)) AS credit_balance
+        GREATEST(0,COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.debit-vl.credit ELSE 0 END),0)) AS debit_balance,
+        GREATEST(0,COALESCE(SUM(CASE WHEN v.id IS NOT NULL THEN vl.credit-vl.debit ELSE 0 END),0)) AS credit_balance
         FROM chart_of_accounts a
         LEFT JOIN voucher_lines vl ON vl.account_id=a.id
         LEFT JOIN vouchers v ON v.id=vl.voucher_id AND v.organization_id=$1 AND v.status='posted'
