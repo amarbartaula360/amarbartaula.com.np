@@ -82,3 +82,42 @@ export async function POST(request){
     return NextResponse.json({error:e.message||"बचत फिर्ता पोस्ट गर्न सकिएन।"},{status:e.status||500});
   }finally{c.release();}
 }
+
+
+export async function PATCH(request){
+  const s=await getBhalaiKoshSession();
+  if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!roles.includes(s.role))return NextResponse.json({error:"Permission denied"},{status:403});
+  let b;try{b=await request.json();}catch{return NextResponse.json({error:"फाराम विवरण सही छैन।"},{status:400});}
+  const id=Number(b.id),amount=Number(b.amount),date=String(b.date||""),method=String(b.paymentMethod||"cash"),description=String(b.description||"बचत फिर्ता");
+  if(!Number.isInteger(id)||id<1||!Number.isFinite(amount)||amount<=0||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)||!["cash","bank","transfer","cheque","online"].includes(method))return NextResponse.json({error:"मिति, रकम र भुक्तानी माध्यम सही राख्नुहोस्।"},{status:400});
+  const db=getBhalaiKoshPool(),c=await db.connect();
+  try{
+    await c.query("BEGIN");
+    const dr=await c.query("SELECT * FROM deposits WHERE id=$1 AND organization_id=$2 AND transaction_type='refund' FOR UPDATE",[id,s.oid]);
+    if(!dr.rowCount)throw Object.assign(new Error("बचत फिर्ता रेकर्ड भेटिएन।"),{status:404});
+    const old=dr.rows[0],memberId=Number(old.member_id);
+    const bal=await c.query("SELECT GREATEST(0,COALESCE((SELECT SUM(amount) FROM savings WHERE organization_id=$1 AND member_id=$2 AND status='posted'),0)-COALESCE((SELECT SUM(amount) FROM deposits WHERE organization_id=$1 AND member_id=$2 AND transaction_type='refund' AND id<>$3),0)) available",[s.oid,memberId,id]);
+    if(amount>Number(bal.rows[0].available||0))throw Object.assign(new Error("सम्पादनपछि फिर्ता रकम हाल कायम बचतभन्दा बढी हुन मिल्दैन।"),{status:400});
+    const cashCode=methodCode(method),accountType=cashCode==="1002"?"bank":"cash";
+    const acc=await c.query("SELECT id,account_code FROM chart_of_accounts WHERE organization_id=$1 AND account_code=ANY($2::varchar[]) AND is_active=true",[s.oid,[cashCode,"2001"]]);
+    const byCode=Object.fromEntries(acc.rows.map(x=>[x.account_code,x.id]));
+    if(!byCode[cashCode]||!byCode["2001"])throw new Error("Cash/Bank वा बचत खाता उपलब्ध छैन।");
+    const cash=await c.query("SELECT id FROM cash_bank_accounts WHERE organization_id=$1 AND account_type=$2 AND is_active=true ORDER BY id LIMIT 1",[s.oid,accountType]);
+    if(!cash.rowCount)throw new Error("छानिएको Cash/Bank खाता सक्रिय छैन।");
+    const vr=await c.query("SELECT * FROM vouchers WHERE organization_id=$1 AND voucher_no=$2 AND status='posted' FOR UPDATE",[s.oid,old.receipt_no]);
+    if(!vr.rowCount)throw Object.assign(new Error("सम्बन्धित Voucher भेटिएन; सुरक्षितताका लागि Edit रोकियो।"),{status:409});
+    const voucherId=Number(vr.rows[0].id);
+    await c.query("UPDATE deposits SET transaction_date=$1,amount=$2,payment_method=$3,description=$4 WHERE id=$5",[date,amount,method,description,id]);
+    await c.query("UPDATE member_ledger SET transaction_date=$1,debit=$2,credit=0,narration=$3 WHERE organization_id=$4 AND member_id=$5 AND voucher_id=$6 AND transaction_type='refund'",[date,amount,description,s.oid,memberId,voucherId]);
+    await c.query("DELETE FROM voucher_lines WHERE voucher_id=$1",[voucherId]);
+    await c.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,$5),($1,$6,$3,0,$4,$5)",[voucherId,byCode["2001"],memberId,amount,description,byCode[cashCode]]);
+    await c.query("UPDATE vouchers SET voucher_date=$1,narration=$2 WHERE id=$3",[date,description,voucherId]);
+    const tx=await c.query("SELECT id FROM cash_bank_transactions WHERE organization_id=$1 AND source_type='voucher' AND source_id=$2 FOR UPDATE",[s.oid,voucherId]);
+    if(tx.rowCount)await c.query("UPDATE cash_bank_transactions SET account_id=$1,transaction_date=$2,amount=$3,direction='out',category='saving_refund',description=$4 WHERE id=$5",[cash.rows[0].id,date,amount,description,tx.rows[0].id]);
+    else await c.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,$3,'out','saving_refund',$4,'voucher',$5,$6,$7,$8)",[s.oid,cash.rows[0].id,date,amount,voucherId,old.receipt_no,description,s.uid||null]);
+    await c.query("COMMIT");
+    return NextResponse.json({ok:true,message:"बचत फिर्ता विवरण सम्पादन भयो। Cash/Bank मौज्दात पनि मिलाइयो।"});
+  }catch(e){await c.query("ROLLBACK");console.error("Savings refund PATCH:",e);return NextResponse.json({error:e.message||"बचत फिर्ता सम्पादन गर्न सकिएन।"},{status:e.status||500});}
+  finally{c.release();}
+}
