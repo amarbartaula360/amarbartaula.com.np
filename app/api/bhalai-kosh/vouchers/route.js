@@ -12,7 +12,7 @@ export async function GET(request) {
     const values=[s.oid]; let filter="";
     if(type && ["journal","payment","receipt","contra"].includes(type)){values.push(type);filter=" AND v.voucher_type=$2";}
     const {rows}=await getBhalaiKoshPool().query(`
-      SELECT v.id,v.voucher_no,v.voucher_type,v.voucher_date,v.narration,v.status,
+      SELECT v.id,v.voucher_no,v.voucher_type,v.voucher_date,v.narration,v.status,v.reference_type,v.reference_id,
         COALESCE(SUM(l.debit),0) AS total_debit,COALESCE(SUM(l.credit),0) AS total_credit
       FROM vouchers v LEFT JOIN voucher_lines l ON l.voucher_id=v.id
       WHERE v.organization_id=$1 ${filter}
