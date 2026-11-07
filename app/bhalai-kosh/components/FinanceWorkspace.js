@@ -29,7 +29,8 @@ export default function FinanceWorkspace({initialTab="journal"}){
   }catch(e){setNotice(e.message);}finally{setBusy(false);}
  };
  const load=async()=>{try{const [vr,mr,lr]=await Promise.all([fetch("/api/bhalai-kosh/vouchers"),fetch("/api/bhalai-kosh/members"),fetch("/api/bhalai-kosh/loans")]);const [v,m,l]=await Promise.all([vr.json(),mr.json(),lr.json()]);if(!vr.ok)throw Error(v.error);if(!mr.ok)throw Error(m.error);if(!lr.ok)throw Error(l.error);setAccounts(v.accounts||[]);setVouchers(v.vouchers||[]);setMembers((m.members||[]).filter(x=>x.status==="active"));setLoans(l.loans||[]);}catch(e){setNotice(e.message||"विवरण लोड भएन।");}};
- useEffect(()=>{load();},[]);\n useEffect(()=>{if(tab==="refund")loadRefunds();},[tab]);
+ useEffect(()=>{load();},[]); 
+ useEffect(()=>{if(tab==="refund")loadRefunds();},[tab]);
  const totalDebit=lines.reduce((s,x)=>s+moneyInput(x.debit),0),totalCredit=lines.reduce((s,x)=>s+moneyInput(x.credit),0);
  const updateLine=(i,k,v)=>setLines(p=>p.map((x,j)=>i===j?{...x,[k]:v}:x));
  const submitVoucher=async()=>{
