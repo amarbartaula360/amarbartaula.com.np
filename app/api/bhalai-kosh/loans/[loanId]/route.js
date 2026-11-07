@@ -28,7 +28,19 @@ export async function PATCH(request,{params}){
   await c.query("BEGIN");
   const q=await c.query("SELECT l.*,m.status AS member_status FROM loans l JOIN members m ON m.id=l.member_id WHERE l.id=$1 AND l.organization_id=$2 FOR UPDATE",[id,s.oid]);
   const loan=q.rows[0];if(!loan)throw Object.assign(new Error("ऋण भेटिएन।"),{status:404});
-  if(action==="approve"){
+  if(action==="edit"){
+   if(!["pending","approved"].includes(loan.status))throw Object.assign(new Error("वितरण भइसकेको ऋणको मूल सर्त यहाँबाट परिवर्तन गर्न मिल्दैन।"),{status:409});
+   const principal=Number(b.principal),rate=Number(b.annualInterestRate),term=Number(b.termMonths),purpose=String(b.purpose||"").trim();
+   const appliedOn=String(b.appliedOn||loan.applied_on).slice(0,10);
+   if(!Number.isFinite(principal)||principal<=0||!Number.isFinite(rate)||rate<0||rate>100||!Number.isInteger(term)||term<1||term>360||!/^\\d{4}-\\d{2}-\\d{2}$/.test(appliedOn))throw Object.assign(new Error("ऋण रकम, ब्याजदर, अवधि र आवेदन मिति सही राख्नुहोस्।"),{status:400});
+   await c.query("UPDATE loans SET principal=$2,annual_interest_rate=$3,term_months=$4,purpose=$5,applied_on=$6 WHERE id=$1",[id,principal,rate,term,purpose||null,appliedOn]);
+   if(loan.status==="approved"){
+    await c.query("DELETE FROM loan_installments WHERE loan_id=$1 AND NOT EXISTS(SELECT 1 FROM loan_payments WHERE loan_id=$1)",[id]);
+    const due=schedule(principal,rate,term,loan.interest_method,loan.approved_at||appliedOn);
+    for(const x of due)await c.query("INSERT INTO loan_installments(loan_id,installment_no,due_date,principal_due,interest_due) VALUES($1,$2,$3,$4,$5)",[id,x.no,x.date,x.principal,x.interest]);
+   }
+   await c.query("COMMIT");return NextResponse.json({ok:true,message:"ऋण आवेदन सम्पादन भयो।"});
+  }else if(action==="approve"){
    if(loan.status!=="pending")throw Object.assign(new Error("Pending आवेदन मात्र स्वीकृत गर्न मिल्छ।"),{status:409});
    const approvedOn=String(b.approvedOn||new Date().toISOString().slice(0,10));
    if(!/^\d{4}-\d{2}-\d{2}$/.test(approvedOn))throw Object.assign(new Error("स्वीकृति मिति सही राख्नुहोस्।"),{status:400});
