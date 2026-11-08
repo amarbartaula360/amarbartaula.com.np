@@ -7,10 +7,6 @@ export async function GET() {
     const s = await getBhalaiKoshSession();
     if (!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
     if (!hasBhalaiKoshPermission(s,"members")) return NextResponse.json({error:"सदस्य व्यवस्थापन अनुमति छैन।"},{status:403});
-    if (!hasBhalaiKoshPermission(s,"members")) return NextResponse.json({error:"सदस्य व्यवस्थापन अनुमति छैन।"},{status:403});
-    if (!hasBhalaiKoshPermission(s,"members")) return NextResponse.json({error:"सदस्य व्यवस्थापन अनुमति छैन।"},{status:403});
-    if (!hasBhalaiKoshPermission(s,"members")) return NextResponse.json({error:"सदस्य व्यवस्थापन अनुमति छैन।"},{status:403});
-    if (!hasBhalaiKoshPermission(s,"members")) return NextResponse.json({error:"सदस्य व्यवस्थापन अनुमति छैन।"},{status:403});
     const db = getBhalaiKoshPool();
     const { rows } = await db.query(`
       SELECT m.id,m.member_code,m.full_name,m.nepali_name,m.gender,m.date_of_birth,m.phone,m.email,m.address,m.citizenship_no,m.designation,m.department,m.bank_name,m.bank_branch,m.bank_account_name,m.bank_account_no,m.emergency_contact,m.joined_on,m.status,m.notes,m.continue_saving,
