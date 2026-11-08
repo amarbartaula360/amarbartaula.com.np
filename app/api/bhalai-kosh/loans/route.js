@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 const canWrite=["admin","super_admin","accountant"];
 export async function GET(){
  try{
   const s=await getBhalaiKoshSession();if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!hasBhalaiKoshPermission(s,"loans"))return NextResponse.json({error:"ऋण व्यवस्थापन अनुमति छैन।"},{status:403});
   const {rows}=await getBhalaiKoshPool().query(`
    SELECT l.*,m.member_code,m.full_name,
     GREATEST(0,COALESCE((SELECT SUM(sv.amount) FROM savings sv WHERE sv.organization_id=l.organization_id AND sv.member_id=l.member_id AND sv.status='posted'),0)-COALESCE((SELECT SUM(d.amount) FROM deposits d WHERE d.organization_id=l.organization_id AND d.member_id=l.member_id AND d.transaction_type IN ('refund','loan_settlement')),0)) AS current_saving,
