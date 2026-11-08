@@ -27,9 +27,9 @@ const projects = [
     title: 'Exam & Marksheet System',
     category: 'School Systems',
     description: 'A Nepali and English school examination system for exam setup, marks entry, grading, GPA calculation, and printable student marksheets.',
-    status: 'In development',
+    status: 'Login required',
     icon: GraduationCap,
-    href: ''
+    href: '/exam'
   },
   {
     title: 'School Fee Reminder',
