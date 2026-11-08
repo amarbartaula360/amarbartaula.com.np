@@ -27,7 +27,7 @@ export async function GET(){
 }
 export async function POST(request){
  const s=await getBhalaiKoshSession();if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
- if(!canWrite.includes(s.role))return NextResponse.json({error:"Permission denied"},{status:403});
+ if(!canWrite.includes(s.role)||!hasBhalaiKoshPermission(s,"loans"))return NextResponse.json({error:"Permission denied"},{status:403});
  const b=await request.json(),memberId=Number(b.memberId),principal=Number(b.principal),rate=Number(b.annualInterestRate||0),term=Number(b.termMonths),method=b.interestMethod==="reducing_balance"?"reducing_balance":"flat";
  if(!Number.isInteger(memberId)||principal<=0||!Number.isFinite(principal)||!Number.isFinite(rate)||rate<0||rate>100||!Number.isInteger(term)||term<1||term>360)
   return NextResponse.json({error:"सदस्य, ऋण रकम, ब्याजदर र अवधि सही राख्नुहोस्।"},{status:400});
