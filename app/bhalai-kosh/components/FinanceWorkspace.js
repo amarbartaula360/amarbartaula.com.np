@@ -11,13 +11,13 @@ export default function FinanceWorkspace({initialTab="journal",onOpenLedger}){
  const [editingVoucher,setEditingVoucher]=useState(null),[editVoucherForm,setEditVoucherForm]=useState({}),[editVoucherBusy,setEditVoucherBusy]=useState(false),[loanCloseTarget,setLoanCloseTarget]=useState(null),[closePaymentMethod,setClosePaymentMethod]=useState("cash"),[continueSavingAfterClose,setContinueSavingAfterClose]=useState(true);
  const [newAccount,setNewAccount]=useState({account_code:"",account_name:"",account_type:"asset"}),[accountFormOpen,setAccountFormOpen]=useState(false);
  const [tab,setTab]=useState(initialTab),[selectedLedgerAccount,setSelectedLedgerAccount]=useState(null),[accountLedgerRows,setAccountLedgerRows]=useState([]),[accountLedgerBusy,setAccountLedgerBusy]=useState(false),[accountLedgerError,setAccountLedgerError]=useState(""),[accounts,setAccounts]=useState([]),[members,setMembers]=useState([]),[vouchers,setVouchers]=useState([]),[loans,setLoans]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
- const [date,setDate]=useState(todayBs()),[narration,setNarration]=useState(""),[lines,setLines]=useState([{accountId:"",memberId:"",debit:"",credit:""},{accountId:"",memberId:"",debit:"",credit:""}]);
- const [loanForm,setLoanForm]=useState({memberId:"",appliedOnBs:todayBs(),principal:"",annualInterestRate:"12",termMonths:"12",interestMethod:"flat",purpose:""});const [approvalDates,setApprovalDates]=useState({});const [editingLoan,setEditingLoan]=useState(null);const [editLoanForm,setEditLoanForm]=useState({});const [editingLoanPayment,setEditingLoanPayment]=useState(null);const [disburseTarget,setDisburseTarget]=useState(null);const [disburseMethod,setDisburseMethod]=useState("cash");
+ const [date,setDate]=useState(""),[narration,setNarration]=useState(""),[lines,setLines]=useState([{accountId:"",memberId:"",debit:"",credit:""},{accountId:"",memberId:"",debit:"",credit:""}]);
+ const [loanForm,setLoanForm]=useState({memberId:"",appliedOnBs:"",principal:"",annualInterestRate:"12",termMonths:"12",interestMethod:"flat",purpose:""});const [approvalDates,setApprovalDates]=useState({});const [editingLoan,setEditingLoan]=useState(null);const [editLoanForm,setEditLoanForm]=useState({});const [editingLoanPayment,setEditingLoanPayment]=useState(null);const [disburseTarget,setDisburseTarget]=useState(null);const [disburseMethod,setDisburseMethod]=useState("cash");
  const [repayForm,setRepayForm]=useState({loanId:"",principalAmount:"",interestAmount:"",feeAmount:"",paymentMethod:"cash"});
  const [expandedLoanId,setExpandedLoanId]=useState(null),[loanSchedule,setLoanSchedule]=useState([]),[scheduleLoading,setScheduleLoading]=useState(false),[scheduleError,setScheduleError]=useState("");
  const [disburseForm,setDisburseForm]=useState({loanId:"",amount:"",paymentMethod:"cash"});
  const [refundMembers,setRefundMembers]=useState([]),[refundRows,setRefundRows]=useState([]),[editingRefund,setEditingRefund]=useState(null);
- const [refundForm,setRefundForm]=useState({memberId:"",date:todayBs(),amount:"",paymentMethod:"cash",description:"बचत फिर्ता"});
+ const [refundForm,setRefundForm]=useState({memberId:"",date:"",amount:"",paymentMethod:"cash",description:"बचत फिर्ता"});
  const selectedRefundMember=refundMembers.find(x=>String(x.id)===String(refundForm.memberId));
  const loadRefunds=async()=>{try{const r=await fetch("/api/bhalai-kosh/savings-refunds");const d=await r.json();if(!r.ok)throw Error(d.error);setRefundMembers(d.members||[]);setRefundRows(d.refunds||[]);}catch(e){setNotice(e.message||"बचत फिर्ता विवरण ल्याउन सकिएन।");}};
  const startEditRefund=(x)=>setEditingRefund({id:x.id,date:adToBs(x.transaction_date).replaceAll("/","-").replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)),amount:String(x.amount),paymentMethod:x.payment_method||"cash",description:x.description||"बचत फिर्ता",memberName:x.full_name});
@@ -33,7 +33,14 @@ export default function FinanceWorkspace({initialTab="journal",onOpenLedger}){
   }catch(e){setNotice(e.message);}finally{setBusy(false);}
  };
  const load=async()=>{try{const [vr,mr,lr]=await Promise.all([fetch("/api/bhalai-kosh/vouchers"),fetch("/api/bhalai-kosh/members"),fetch("/api/bhalai-kosh/loans")]);const [v,m,l]=await Promise.all([vr.json(),mr.json(),lr.json()]);if(!vr.ok)throw Error(v.error);if(!mr.ok)throw Error(m.error);if(!lr.ok)throw Error(l.error);setAccounts(v.accounts||[]);setVouchers(v.vouchers||[]);setMembers((m.members||[]).filter(x=>x.status==="active"));setLoans(l.loans||[]);}catch(e){setNotice(e.message||"विवरण लोड भएन।");}};
- useEffect(()=>{load();},[]); 
+ useEffect(()=>{load();},[]);
+ useEffect(()=>{
+  // Keep server and browser first render identical; calculate BS date after hydration.
+  const today=todayBs();
+  setDate(today);
+  setLoanForm(p=>({...p,appliedOnBs:p.appliedOnBs||today}));
+  setRefundForm(p=>({...p,date:p.date||today}));
+ },[]); 
  useEffect(()=>{if(tab==="refund")loadRefunds();},[tab]);
  const createAccount=async()=>{const code=newAccount.account_code.trim(),name=newAccount.account_name.trim();if(!code||!name){setNotice("खाता कोड र नाम दुवै राख्नुहोस्।");return;}setBusy(true);try{const r=await fetch("/api/bhalai-kosh/accounts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountCode:code,accountName:name,accountType:newAccount.account_type})});const d=await r.json();if(!r.ok)throw Error(d.error||"खाता बनाउन सकिएन।");setNotice(d.message||"नयाँ Ledger बन्यो।");setNewAccount({account_code:"",account_name:"",account_type:"asset"});setAccountFormOpen(false);await load();}catch(e){setNotice(e.message);}finally{setBusy(false);}};
  const openAccountLedger=async(account)=>{setSelectedLedgerAccount(account);setAccountLedgerRows([]);setAccountLedgerError("");setAccountLedgerBusy(true);try{const r=await fetch("/api/bhalai-kosh/accounts/"+account.id+"/ledger");const d=await r.json();if(!r.ok)throw Error(d.error||"Accounting Ledger ल्याउन सकिएन।");setAccountLedgerRows(d.ledger||[]);}catch(e){setAccountLedgerError(e.message||"Accounting Ledger ल्याउन सकिएन।");}finally{setAccountLedgerBusy(false);}};
