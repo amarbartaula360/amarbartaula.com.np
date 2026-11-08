@@ -305,9 +305,16 @@ export default function BhalaiKoshPage() {
         const params = new URLSearchParams();
         if (ledgerAppliedFromBs.trim()) params.set("fromBs", ledgerAppliedFromBs.trim());
         if (ledgerAppliedToBs.trim()) params.set("toBs", ledgerAppliedToBs.trim());
-        const response = await fetch("/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId) + "?" + params.toString(), { signal: controller.signal });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "सदस्य Ledger ल्याउन सकिएन।");
+        const apiUrl = "/api/bhalai-kosh/ledger/" + encodeURIComponent(ledgerMemberId) + "?" + params.toString();
+        const response = await fetch(apiUrl, { signal: controller.signal, headers: { Accept: "application/json" } });
+        const raw = await response.text();
+        let data;
+        try { data = raw ? JSON.parse(raw) : {}; }
+        catch {
+          const contentType = response.headers.get("content-type") || "unknown";
+          throw new Error(`सदस्य Ledger API ले JSON को सट्टा HTML/Text पठायो (HTTP ${response.status}, ${contentType})। यो URL/Deploy समस्या हुन सक्छ: ${apiUrl}`);
+        }
+        if (!response.ok) throw new Error(data.error || `सदस्य Ledger ल्याउन सकिएन (HTTP ${response.status})।`);
         setLedgerData(data);
       } catch (error) {
         if (error.name !== "AbortError") setLedgerError(error.message || "Ledger ल्याउन सकिएन।");
