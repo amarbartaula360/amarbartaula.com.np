@@ -20,7 +20,7 @@ export async function POST(request) {
   try {
     const s = await getBhalaiKoshSession();
     if (!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
-    if (!["admin","super_admin","accountant","staff"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
+    if (!hasBhalaiKoshPermission(s,"members") || !["admin","super_admin","accountant","staff"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
     const b = await request.json();
     const code=String(b.memberCode||"").trim().toUpperCase(), name=String(b.fullName||"").trim();
     if(!/^[A-Z0-9_-]{2,40}$/.test(code)||!name) return NextResponse.json({error:"Member ID र नाम अनिवार्य छन्।"},{status:400});
@@ -37,7 +37,7 @@ export async function PUT(request) {
   try {
     const s = await getBhalaiKoshSession();
     if (!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
-    if (!["admin","super_admin","accountant"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
+    if (!hasBhalaiKoshPermission(s,"members") || !["admin","super_admin","accountant"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
     const b = await request.json();
     const id = Number(b.id);
     const code = String(b.memberCode||"").trim().toUpperCase();
@@ -66,7 +66,7 @@ export async function DELETE(request) {
   try {
     const s = await getBhalaiKoshSession();
     if (!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
-    if (!["admin","super_admin"].includes(s.role)) return NextResponse.json({error:"Delete गर्न Admin अनुमति आवश्यक छ।"},{status:403});
+    if (!hasBhalaiKoshPermission(s,"members") || !["admin","super_admin"].includes(s.role)) return NextResponse.json({error:"Delete गर्न Admin अनुमति आवश्यक छ।"},{status:403});
     const id = Number(new URL(request.url).searchParams.get("id"));
     if (!Number.isInteger(id) || id < 1) return NextResponse.json({error:"सही सदस्य छान्नुहोस्।"},{status:400});
     const db = getBhalaiKoshPool();
