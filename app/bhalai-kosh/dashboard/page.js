@@ -73,6 +73,10 @@ export default function BhalaiKoshPage() {
   const [depositYear, setDepositYear] = useState("2082");
   const [depositMonth, setDepositMonth] = useState("1");
   const [contributions, setContributions] = useState([]);
+  const [monthlyCollectionMembers,setMonthlyCollectionMembers] = useState([]);
+  const [collectionSelection,setCollectionSelection] = useState({});
+  const [collectionDate,setCollectionDate] = useState("");
+  const [collectionBusy,setCollectionBusy] = useState(false);
   const [depositAmounts, setDepositAmounts] = useState({});
   const [depositDates, setDepositDates] = useState({});
   const [depositMethods, setDepositMethods] = useState({});
@@ -103,10 +107,22 @@ export default function BhalaiKoshPage() {
   const loadMonthlyContributions = async () => {
     setDepositLoading(true);
     try {
-      const r = await fetch("/api/bhalai-kosh/contributions?year="+depositYear+"&month="+depositMonth);
-      const d = await r.json();
+      const [r,cr] = await Promise.all([
+        fetch("/api/bhalai-kosh/contributions?year="+depositYear+"&month="+depositMonth),
+        fetch("/api/bhalai-kosh/monthly-collection?year="+depositYear+"&month="+depositMonth)
+      ]);
+      const [d,cd] = await Promise.all([r.json(),cr.json()]);
       if (!r.ok) throw new Error(d.error || "मासिक बचत विवरण ल्याउन सकिएन।");
+      if (!cr.ok) throw new Error(cd.error || "मासिक किस्ता विवरण ल्याउन सकिएन।");
       setContributions(d.contributions || []);
+      const rows=cd.members||[];
+      setMonthlyCollectionMembers(rows);
+      setCollectionSelection(Object.fromEntries(rows.map(x=>[String(x.member_id),{
+        saveSaving:false,saveLoan:false,savingAmount:"1000",
+        principalAmount:String(x.month_principal_due||0),
+        interestAmount:String(x.month_interest_due||0),
+        feeAmount:String(x.month_fee_due||0),paymentMethod:"cash"
+      }])));
     } catch (e) { setNotice(e.message); }
     finally { setDepositLoading(false); }
   };
@@ -141,6 +157,25 @@ export default function BhalaiKoshPage() {
       if (sr.ok) setDashboardSummary(await sr.json());
     } catch (e) { setNotice(e.message); }
     finally { setDashboardLoading(false); }
+  };
+  const updateCollectionSelection = (memberId,patch) => setCollectionSelection(p=>({...p,[String(memberId)]:{...(p[String(memberId)]||{}),...patch}}));
+  const saveMonthlyCollection = async () => {
+    const items=monthlyCollectionMembers.map(m=>({memberId:Number(m.member_id),...(collectionSelection[String(m.member_id)]||{}),loanId:Number(m.loan_id||0)}))
+      .filter(x=>x.saveSaving||x.saveLoan)
+      .map(x=>({memberId:x.memberId,saveSaving:!!x.saveSaving,saveLoan:!!x.saveLoan,
+        savingAmount:Number(x.savingAmount||0),loanId:x.loanId,
+        principalAmount:Number(x.principalAmount||0),interestAmount:Number(x.interestAmount||0),feeAmount:Number(x.feeAmount||0),paymentMethod:x.paymentMethod||"cash"}));
+    if(!items.length){setNotice("पहिले बचत वा EMI को टिक लगाउनुहोस्।");return;}
+    setCollectionBusy(true);
+    try{
+      const r=await fetch("/api/bhalai-kosh/monthly-collection",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({year:Number(depositYear),month:Number(depositMonth),paidOn:collectionDate||null,items})});
+      const d=await r.json();if(!r.ok)throw new Error(d.error||"मासिक बचत तथा किस्ता सुरक्षित गर्न सकिएन।");
+      setNotice(d.message+" कुल "+d.count+" सदस्यको कारोबार पोस्ट भयो।");
+      await loadMonthlyContributions();
+      if(active==="Overview"){const sr=await fetch("/api/bhalai-kosh/dashboard-summary");if(sr.ok)setDashboardSummary(await sr.json());}
+    }catch(e){setNotice(e.message||"मासिक विवरण सुरक्षित गर्न सकिएन।");}
+    finally{setCollectionBusy(false);}
   };
   const saveContribution = async (member) => {
     const amount = Number(depositAmounts[member.dbId] ?? 1000);
