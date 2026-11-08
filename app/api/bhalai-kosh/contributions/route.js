@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 
 export async function GET(request) {
   try {
     const s=await getBhalaiKoshSession(); if(!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!hasBhalaiKoshPermission(s,"savings"))return NextResponse.json({error:"मासिक बचत अनुमति छैन।"},{status:403});
+    if(!hasBhalaiKoshPermission(s,"savings"))return NextResponse.json({error:"मासिक बचत अनुमति छैन।"},{status:403});
     const {searchParams}=new URL(request.url);
     const year=Number(searchParams.get("year")||new Date().getFullYear());
     const month=Number(searchParams.get("month")||new Date().getMonth()+1);
