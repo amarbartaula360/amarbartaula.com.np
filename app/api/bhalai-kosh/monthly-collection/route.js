@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import NepaliDate from "nepali-date-converter";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 
 export const runtime = "nodejs";
 const roles = ["admin", "super_admin", "accountant"];
@@ -22,6 +22,7 @@ export async function GET(request) {
   try {
     const session = await getBhalaiKoshSession();
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasBhalaiKoshPermission(session,"savings") && !hasBhalaiKoshPermission(session,"loans")) return NextResponse.json({ error: "मासिक विवरण अनुमति छैन।" }, { status: 403 });
     const params = new URL(request.url).searchParams;
     const year = Number(params.get("year")), month = Number(params.get("month"));
     if (!Number.isInteger(year) || year < 2000 || !Number.isInteger(month) || month < 1 || month > 12)
@@ -79,7 +80,7 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getBhalaiKoshSession();
   if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!roles.includes(session.role)) return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+  if (!roles.includes(session.role) || !hasBhalaiKoshPermission(session,"savings") || !hasBhalaiKoshPermission(session,"loans")) return NextResponse.json({ error: "Permission denied" }, { status: 403 });
   const body = await request.json();
   const year = Number(body.year), month = Number(body.month);
   const items = Array.isArray(body.items) ? body.items : [];
