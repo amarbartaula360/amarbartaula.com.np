@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 import NepaliDate from "nepali-date-converter";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function bsDateToAd(value, label) {
   if (!value) return null;
@@ -21,6 +22,7 @@ export async function GET(request, { params }) {
   try {
     const session = await getBhalaiKoshSession();
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasBhalaiKoshPermission(session,"ledger")) return NextResponse.json({ error: "सदस्य Ledger हेर्ने अनुमति छैन। Settings मा Ledger Permission दिनुहोस्।" }, { status: 403 });
 
     const { memberId } = await params;
     if (!/^\d+$/.test(String(memberId)) || Number(memberId) <= 0) {
