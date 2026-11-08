@@ -18,7 +18,7 @@ export async function GET() {
   try {
     const s=await getBhalaiKoshSession();
     if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
-    if(!canManage(s)&&!s.permissions?.users)return NextResponse.json({error:"प्रयोगकर्ता व्यवस्थापन अनुमति छैन।"},{status:403});
+    if(!canManage(s)&&!(Array.isArray(s.permissions)&&s.permissions.includes("users")))return NextResponse.json({error:"प्रयोगकर्ता व्यवस्थापन अनुमति छैन।"},{status:403});
     const db=getBhalaiKoshPool();await ensurePermissionsTable(db);
     const {rows}=await db.query(`SELECT u.id,u.full_name,u.email,u.role,u.is_active,u.last_login_at,u.created_at,
       COALESCE(p.permissions,'{}'::jsonb) AS permissions
