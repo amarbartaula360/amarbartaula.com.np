@@ -17,6 +17,7 @@ const navItems = [
   ["Import", "Excel Import", FileSpreadsheet],
   ["Reports", "प्रतिवेदन", BarChart3],
   ["Ledger", "सदस्य Ledger", BookOpen],
+  ["Settings", "सेटिङ / User ID", Settings],
 ];
 
 const money = (n) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -49,11 +50,18 @@ const reportConfigs = {
 export default function BhalaiKoshPage() {
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
+  const [currentUser,setCurrentUser]=useState(null);
+  const [managedUsers,setManagedUsers]=useState([]);
+  const [usersLoading,setUsersLoading]=useState(false);
+  const [userSaving,setUserSaving]=useState(false);
+  const [editingUserId,setEditingUserId]=useState(null);
+  const emptyUserForm={fullName:"",email:"",password:"",role:"staff",permissions:{dashboard:true,members:false,savings:false,finance:false,vouchers:false,loans:false,reports:false,ledger:false,import:false,settings:false,users:false}};
+  const [userForm,setUserForm]=useState(emptyUserForm);
   useEffect(() => {
     fetch("/api/bhalai-kosh/auth/me").then(r => {
       if (!r.ok) { router.replace("/bhalaikosh"); return null; }
       return r.json();
-    }).then(data => { if (data?.authenticated) setAuthReady(true); }).catch(() => router.replace("/bhalaikosh"));
+    }).then(data => { if (data?.authenticated) { setCurrentUser(data.user); setAuthReady(true); } }).catch(() => router.replace("/bhalaikosh"));
   }, [router]);
   const [active, setActive] = useState("Overview");
   const [financeTab, setFinanceTab] = useState("journal");
@@ -105,6 +113,27 @@ export default function BhalaiKoshPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
   const nepaliMonths = ["बैशाख","जेठ","असार","साउन","भदौ","असोज","कात्तिक","मंसिर","पुस","माघ","फागुन","चैत"];
+  const loadManagedUsers=async()=>{
+    setUsersLoading(true);
+    try{const r=await fetch("/api/bhalai-kosh/users");const d=await r.json();if(!r.ok)throw Error(d.error||"User list ल्याउन सकिएन।");setManagedUsers(d.users||[]);}
+    catch(e){setNotice(e.message);}finally{setUsersLoading(false);}
+  };
+  useEffect(()=>{if(authReady&&active==="Settings")loadManagedUsers();},[authReady,active]);
+  const editManagedUser=(u)=>{setEditingUserId(u.id);setUserForm({fullName:u.full_name,email:u.email,password:"",role:u.role,permissions:u.permissions||{}});};
+  const saveManagedUser=async()=>{
+    setUserSaving(true);
+    try{
+      const editing=!!editingUserId;
+      const payload=editing?{id:editingUserId,permissions:userForm.permissions,...(userForm.password?{password:userForm.password}:{})}:userForm;
+      const r=await fetch("/api/bhalai-kosh/users",{method:editing?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const d=await r.json();if(!r.ok)throw Error(d.error||"User सुरक्षित गर्न सकिएन।");
+      setNotice(d.message||"User सुरक्षित भयो।");setEditingUserId(null);setUserForm(emptyUserForm);await loadManagedUsers();
+    }catch(e){setNotice(e.message);}finally{setUserSaving(false);}
+  };
+  const toggleManagedUser=async(u)=>{
+    const r=await fetch("/api/bhalai-kosh/users",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:u.id,isActive:!u.is_active})});
+    const d=await r.json();if(!r.ok){setNotice(d.error||"User status परिवर्तन भएन।");return;}setNotice("User status परिवर्तन भयो।");await loadManagedUsers();
+  };
   const loadMonthlyContributions = async () => {
     setDepositLoading(true);
     try {
@@ -532,7 +561,33 @@ export default function BhalaiKoshPage() {
               </tbody></table></div></>}
             {!ledgerMemberId && !ledgerLoading && <div className="mt-5 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Ledger हेर्न माथिबाट सदस्य चयन गर्नुहोस्।</div>}
           </article>}
-          {active === "Settings" && <article className="rounded-2xl border border-slate-200 bg-white p-6"><h2 className="font-extrabold">कोष सेटिङ</h2><p className="mt-2 text-sm text-slate-500">मासिक बचत रकम, ब्याज गणना विधि, ऋण अवधि, जरिवाना नियम र वित्तीय वर्ष सेट गर्ने सुविधा।</p></article>}
+          {active === "Settings" && <div className="space-y-5">
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black text-slate-900">User ID तथा Permission Management</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">कोषका कर्मचारीका लागि छुट्टाछुट्टै Login ID बनाउनुहोस् र कुन Module हेर्न वा चलाउन पाउने हो छान्नुहोस्।</p></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Admin only</span></div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex items-center justify-between"><h3 className="font-extrabold">{editingUserId?"User Permission Edit":"Create New User ID"}</h3>{editingUserId&&<button onClick={()=>{setEditingUserId(null);setUserForm(emptyUserForm);}} className="text-xs font-bold text-blue-700">नयाँ User</button>}</div>
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-xs font-bold text-slate-600">पूरा नाम<input value={userForm.fullName} onChange={e=>setUserForm(p=>({...p,fullName:e.target.value}))} disabled={!!editingUserId} placeholder="कर्मचारीको पूरा नाम" className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal disabled:bg-slate-100"/></label>
+                    <label className="block text-xs font-bold text-slate-600">User ID / Email<input type="email" value={userForm.email} onChange={e=>setUserForm(p=>({...p,email:e.target.value}))} disabled={!!editingUserId} placeholder="staff@yourorg.com" className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal disabled:bg-slate-100"/></label>
+                    <label className="block text-xs font-bold text-slate-600">{editingUserId?"नयाँ Password (खाली राखे नबदलिने)":"Password (कम्तीमा ८ अक्षर)"}<input type="password" value={userForm.password} onChange={e=>setUserForm(p=>({...p,password:e.target.value}))} placeholder={editingUserId?"Optional":"कम्तीमा ८ अक्षर"} className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal"/></label>
+                    {!editingUserId&&<label className="block text-xs font-bold text-slate-600">User Role<select value={userForm.role} onChange={e=>setUserForm(p=>({...p,role:e.target.value}))} className="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal"><option value="staff">Staff</option><option value="accountant">Accountant</option><option value="admin">Admin</option></select></label>}
+                  </div>
+                  <div className="mt-4 border-t border-slate-200 pt-4"><div className="flex items-center justify-between"><h4 className="text-sm font-extrabold">Module Permissions</h4><button type="button" onClick={()=>setUserForm(p=>({...p,permissions:Object.fromEntries(Object.keys(p.permissions).map(k=>[k,true]))}))} className="text-xs font-bold text-blue-700">सबै छान्नुहोस्</button></div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {[[ "dashboard","Dashboard"],["members","Members"],["savings","Monthly Savings"],["finance","Finance"],["vouchers","Voucher"],["loans","Loans"],["reports","Reports"],["ledger","Member Ledger"],["import","Excel Import"],["settings","Settings"],["users","Manage Users"]].map(([key,label])=><label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:border-emerald-300"><input type="checkbox" checked={!!userForm.permissions[key]} onChange={e=>setUserForm(p=>({...p,permissions:{...p.permissions,[key]:e.target.checked}}))} className="h-4 w-4 accent-emerald-700"/>{label}</label>)}
+                    </div>
+                  </div>
+                  <button disabled={userSaving} onClick={saveManagedUser} className="mt-5 h-11 w-full rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">{userSaving?"Saving…":editingUserId?"Save Permission Changes":"Create User ID"}</button>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-center justify-between gap-2"><div><h3 className="font-extrabold">Registered Users</h3><p className="mt-1 text-xs text-slate-500">यस संस्थामा बनाइएका Login ID</p></div><button onClick={loadManagedUsers} className="rounded-lg border px-3 py-2 text-xs font-bold text-slate-600">Refresh</button></div>
+                  {usersLoading?<p className="py-10 text-center text-sm text-slate-400">Loading users…</p>:<div className="mt-4 space-y-2">{managedUsers.map(u=><div key={u.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{u.full_name}</p><p className="truncate text-xs text-slate-500">{u.email} · {u.role}</p><p className="mt-1 text-[11px] text-slate-400">{Object.values(u.permissions||{}).filter(Boolean).length} permissions · {u.is_active?"Active":"Inactive"}</p></div><div className="flex gap-2"><button onClick={()=>editManagedUser(u)} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700">Edit</button><button disabled={Number(u.id)===Number(currentUser?.id)} onClick={()=>toggleManagedUser(u)} className={"rounded-lg px-3 py-2 text-xs font-bold "+(u.is_active?"border border-rose-200 text-rose-700":"border border-emerald-200 text-emerald-700")}>{u.is_active?"Disable":"Enable"}</button></div></div>)}{!managedUsers.length&&<p className="py-10 text-center text-sm text-slate-400">अहिलेसम्म User ID बनाइएको छैन।</p>}</div>}
+                </div>
+              </div>
+              <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">सुरक्षा: User ID संस्थाको Login Email हो। Password database मा encrypted hash का रूपमा सुरक्षित हुन्छ। Admin ले मात्र नयाँ User ID बनाउन, Permission बदल्न वा Login बन्द गर्न सक्छ।</p>
+            </article>
+          </div>}
         </section>
       </div>
       {ledgerEditRow&&<div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/60 p-4"><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black">Ledger कारोबार सम्पादन</h2><p className="text-xs text-slate-500">{({contribution:"मासिक बचत",saving:"मासिक बचत",loan_disbursement:"ऋण वितरण",loan_repayment:"EMI किस्ता"})[ledgerEditRow.transaction_type]}</p></div><button onClick={()=>setLedgerEditRow(null)} className="rounded-lg border px-3 py-1.5 text-sm">बन्द</button></div>
