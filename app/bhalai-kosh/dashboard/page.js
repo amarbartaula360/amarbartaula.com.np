@@ -77,6 +77,7 @@ export default function BhalaiKoshPage() {
   const [collectionSelection,setCollectionSelection] = useState({});
   const [collectionDate,setCollectionDate] = useState("");
   const [collectionBusy,setCollectionBusy] = useState(false);
+  const [collectionPaymentMethod,setCollectionPaymentMethod] = useState("bank");
   const [depositAmounts, setDepositAmounts] = useState({});
   const [depositDates, setDepositDates] = useState({});
   const [depositMethods, setDepositMethods] = useState({});
@@ -159,12 +160,36 @@ export default function BhalaiKoshPage() {
     finally { setDashboardLoading(false); }
   };
   const updateCollectionSelection = (memberId,patch) => setCollectionSelection(p=>({...p,[String(memberId)]:{...(p[String(memberId)]||{}),...patch}}));
+  const selectAllMonthlySavings = checked => setCollectionSelection(p=>{
+    const next={...p};
+    for(const row of monthlyCollectionMembers){
+      const key=String(row.member_id),paid=contributions.some(c=>Number(c.member_id)===Number(row.member_id));
+      if(!paid&&row.continue_saving!==false)next[key]={...(next[key]||{}),saveSaving:checked};
+    }
+    return next;
+  });
+  const selectAllMonthlyEmis = checked => setCollectionSelection(p=>{
+    const next={...p};
+    for(const row of monthlyCollectionMembers){
+      const balance=Number(row.principal_outstanding||0)+Number(row.interest_outstanding||0)+Number(row.fee_outstanding||0);
+      if(row.loan_id&&balance>0)next[String(row.member_id)]={...(next[String(row.member_id)]||{}),saveLoan:checked};
+    }
+    return next;
+  });
+  const setAllSelectedPaymentMethod = method => {
+    setCollectionPaymentMethod(method);
+    setCollectionSelection(p=>{
+      const next={...p};
+      for(const [key,value] of Object.entries(next))if(value.saveSaving||value.saveLoan)next[key]={...value,paymentMethod:method};
+      return next;
+    });
+  };
   const saveMonthlyCollection = async () => {
     const items=monthlyCollectionMembers.map(m=>({memberId:Number(m.member_id),...(collectionSelection[String(m.member_id)]||{}),loanId:Number(m.loan_id||0)}))
       .filter(x=>x.saveSaving||x.saveLoan)
       .map(x=>({memberId:x.memberId,saveSaving:!!x.saveSaving,saveLoan:!!x.saveLoan,
         savingAmount:Number(x.savingAmount||0),loanId:x.loanId,
-        principalAmount:Number(x.principalAmount||0),interestAmount:Number(x.interestAmount||0),feeAmount:Number(x.feeAmount||0),paymentMethod:x.paymentMethod||"cash"}));
+        principalAmount:Number(x.principalAmount||0),interestAmount:Number(x.interestAmount||0),feeAmount:Number(x.feeAmount||0),paymentMethod:collectionPaymentMethod||"bank"}));
     if(!items.length){setNotice("पहिले बचत वा EMI को टिक लगाउनुहोस्।");return;}
     setCollectionBusy(true);
     try{
@@ -405,7 +430,7 @@ export default function BhalaiKoshPage() {
               </div>
             </article>
             <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="flex flex-col justify-between gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center"><div><h3 className="font-extrabold">वर्ष {depositYear} — {nepaliMonths[Number(depositMonth)-1]} मासिक बचत तथा किस्ता Sheet</h3><p className="mt-1 text-xs text-slate-500">बचत र EMI छुट्टाछुट्टै छान्नुहोस्। EMI रकम यस महिनाको बाँकी किस्ता अनुसार स्वतः भरिन्छ; आवश्यक परे सम्पादन गर्न सकिन्छ।</p></div><div className="flex gap-2"><button onClick={loadMonthlyContributions} className="rounded-lg border px-3 py-2 text-xs font-bold">Refresh</button><button disabled={collectionBusy||!Object.values(collectionSelection).some(x=>x.saveSaving||x.saveLoan)} onClick={saveMonthlyCollection} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{collectionBusy?"Save हुँदैछ…":"छानिएका सबै कारोबार Save गर्नुहोस्"}</button></div></div>
+              <div className="flex flex-col justify-between gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center"><div><h3 className="font-extrabold">वर्ष {depositYear} — {nepaliMonths[Number(depositMonth)-1]} मासिक बचत तथा किस्ता Sheet</h3><p className="mt-1 text-xs text-slate-500">बचत र EMI छुट्टाछुट्टै छान्नुहोस्। EMI रकम यस महिनाको बाँकी किस्ता अनुसार स्वतः भरिन्छ; आवश्यक परे सम्पादन गर्न सकिन्छ।</p></div><div className="flex flex-wrap gap-2"><label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold"><input type="checkbox" checked={monthlyCollectionMembers.filter(x=>!contributions.some(c=>Number(c.member_id)===Number(x.member_id))&&x.continue_saving!==false).length>0&&monthlyCollectionMembers.filter(x=>!contributions.some(c=>Number(c.member_id)===Number(x.member_id))&&x.continue_saving!==false).every(x=>!!collectionSelection[String(x.member_id)]?.saveSaving)} onChange={e=>selectAllMonthlySavings(e.target.checked)}/> सबै बचत</label><label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold"><input type="checkbox" checked={monthlyCollectionMembers.filter(x=>x.loan_id&&Number(x.principal_outstanding||0)+Number(x.interest_outstanding||0)+Number(x.fee_outstanding||0)>0).length>0&&monthlyCollectionMembers.filter(x=>x.loan_id&&Number(x.principal_outstanding||0)+Number(x.interest_outstanding||0)+Number(x.fee_outstanding||0)>0).every(x=>!!collectionSelection[String(x.member_id)]?.saveLoan)} onChange={e=>selectAllMonthlyEmis(e.target.checked)}/> सबै EMI</label><label className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold">सबैको माध्यम<select value={collectionPaymentMethod} onChange={e=>setAllSelectedPaymentMethod(e.target.value)} className="rounded-md border px-2 py-1"><option value="bank">Bank Deposit</option><option value="cash">Cash</option><option value="transfer">Transfer</option><option value="cheque">Cheque</option><option value="online">Online</option></select></label><button onClick={loadMonthlyContributions} className="rounded-lg border px-3 py-2 text-xs font-bold">Refresh</button><button disabled={collectionBusy||!Object.values(collectionSelection).some(x=>x.saveSaving||x.saveLoan)} onClick={saveMonthlyCollection} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{collectionBusy?"Save हुँदैछ…":"छानिएका सबै कारोबार Save गर्नुहोस्"}</button></div></div>
               {depositLoading ? <p className="p-8 text-center text-sm text-slate-500">विवरण लोड हुँदैछ…</p> : <div className="overflow-x-auto"><table className="w-full min-w-[1450px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["सदस्य नं.","सदस्यको नाम","बचत ✓","बचत रकम","EMI ✓","ऋण नं. / बाँकी","साँवा","ब्याज","जरिवाना","माध्यम","पहिलेको स्थिति","कार्य"].map(h=><th key={h} className="px-3 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{depositRows.map(({member:m,paid,collection:x})=>{
                 const state=collectionSelection[String(m.dbId)]||{};
                 const hasLoan=!!x?.loan_id;
