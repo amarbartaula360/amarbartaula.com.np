@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime="nodejs";
 const roles=["admin","super_admin","accountant"];
 const n=x=>Number(Number(x).toFixed(2));
@@ -20,7 +20,7 @@ function schedule(principal,rate,term,method,start){
 }
 export async function PATCH(request,{params}){
  const s=await getBhalaiKoshSession();if(!s?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
- if(!roles.includes(s.role))return NextResponse.json({error:"Permission denied"},{status:403});
+ if(!roles.includes(s.role)||!hasBhalaiKoshPermission(s,"loans"))return NextResponse.json({error:"Permission denied"},{status:403});
  const {loanId}=await params,id=Number(loanId),b=await request.json(),action=String(b.action||"");
  if(!Number.isInteger(id)||id<1)return NextResponse.json({error:"सही ऋण छान्नुहोस्।"},{status:400});
  const db=getBhalaiKoshPool(),c=await db.connect();
