@@ -24,6 +24,14 @@ const projects = [
     href: '/leadgerpro'
   },
   {
+    title: 'Exam & Marksheet System',
+    category: 'School Systems',
+    description: 'A Nepali and English school examination system for exam setup, marks entry, grading, GPA calculation, and printable student marksheets.',
+    status: 'In development',
+    icon: GraduationCap,
+    href: ''
+  },
+  {
     title: 'School Fee Reminder',
     category: 'School Systems',
     description: 'A school-focused platform for student fee tracking and parent communication workflows.',
