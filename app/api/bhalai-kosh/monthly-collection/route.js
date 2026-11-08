@@ -178,7 +178,7 @@ export async function POST(request) {
           await client.query("UPDATE loans SET status='closed' WHERE id=$1",[loan.id]);
         results.push({ memberId, loanId:loan.id, paymentId:payment.rows[0].id, loanAmount:loanTotal });
       }
-      await client.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'in','monthly_collection','inbound',$4,'voucher',$5,$6,$7,$8)",
+      await client.query("INSERT INTO cash_bank_transactions(organization_id,account_id,transaction_date,direction,category,amount,source_type,source_id,reference_no,description,created_by) VALUES($1,$2,COALESCE($3::date,CURRENT_DATE),'in','monthly_collection',$4,'voucher',$5,$6,$7,$8)",
         [session.oid,cash.rows[0].id,date,total,voucherId,voucherNo,narration,session.uid||null]);
     }
     await client.query("COMMIT");
