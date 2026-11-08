@@ -19,6 +19,17 @@ export async function POST(request) {
     const user = result.rows[0];
     if (!user || !user.is_active || !(await bcrypt.compare(password, user.password_hash)))
       return NextResponse.json({ error: "Login विवरण मिलेन। कृपया फेरि जाँच गर्नुहोस्।" }, { status: 401 });
+    await db.query(`CREATE TABLE IF NOT EXISTS bhalai_kosh_user_permissions (
+      user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`);
+    const pr=await db.query("SELECT permissions FROM bhalai_kosh_user_permissions WHERE user_id=$1 AND organization_id=$2",[user.id,user.organization_id]);
+    const all=["dashboard","members","savings","finance","vouchers","loans","reports","ledger","import","settings","users"];
+    const roleDefaults=user.role==="admin"||user.role==="super_admin"?all:user.role==="accountant"?["dashboard","members","savings","finance","vouchers","loans","reports","ledger"]:["dashboard","members","savings"];
+    const stored=pr.rows[0]?.permissions;
+    user.permissions=stored?all.filter(key=>stored[key]===true):roleDefaults;
     await db.query("UPDATE users SET last_login_at=now() WHERE id=$1", [user.id]);
     await createBhalaiKoshSession(user);
     await db.query("INSERT INTO audit_logs(organization_id,user_id,action,entity_type,entity_id) VALUES($1,$2,'login','user',$2)", [user.organization_id,user.id]);
