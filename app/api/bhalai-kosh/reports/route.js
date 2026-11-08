@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 
 export async function GET(request) {
   try {
     const session = await getBhalaiKoshSession();
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasBhalaiKoshPermission(session,"reports")) return NextResponse.json({ error: "प्रतिवेदन हेर्ने अनुमति छैन।" }, { status: 403 });
     const url = new URL(request.url);
     const from = url.searchParams.get("from") || null;
     const to = url.searchParams.get("to") || null;
