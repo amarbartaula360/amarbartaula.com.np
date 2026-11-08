@@ -85,7 +85,7 @@ export async function PATCH(request,{params}) {
 export async function DELETE(_request,{params}) {
   const session=await getBhalaiKoshSession();
   if(!session?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
-  if(!allowed.includes(session.role))return NextResponse.json({error:"Permission denied"},{status:403});
+  if(!allowed.includes(session.role)||!hasBhalaiKoshPermission(session,"vouchers"))return NextResponse.json({error:"Permission denied"},{status:403});
   const {voucherId}=await params;
   const db=getBhalaiKoshPool(),c=await db.connect();
   try {
