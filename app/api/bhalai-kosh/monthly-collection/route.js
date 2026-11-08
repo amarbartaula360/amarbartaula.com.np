@@ -108,9 +108,11 @@ export async function POST(request) {
       if (!member.rowCount) throw Object.assign(new Error("सक्रिय सदस्य भेटिएन।"), { status: 404 });
       if (saveSaving && member.rows[0].continue_saving === false)
         throw Object.assign(new Error("यस सदस्यको बचत रोकिएको छ। नयाँ बचत दर्ता गर्न मिल्दैन।"), { status: 409 });
+      let voidedSavingId = null;
       if (saveSaving) {
-        const exists = await client.query("SELECT id FROM savings WHERE organization_id=$1 AND member_id=$2 AND period_year=$3 AND period_month=$4 AND status='posted' FOR UPDATE", [session.oid, memberId, year, month]);
-        if (exists.rowCount) throw Object.assign(new Error("यस महिनाको बचत पहिले नै दर्ता छ।"), { status: 409 });
+        const exists = await client.query("SELECT id,status FROM savings WHERE organization_id=$1 AND member_id=$2 AND period_year=$3 AND period_month=$4 FOR UPDATE", [session.oid, memberId, year, month]);
+        if (exists.rowCount && exists.rows[0].status === "posted") throw Object.assign(new Error("यस महिनाको बचत पहिले नै दर्ता छ।"), { status: 409 });
+        if (exists.rowCount) voidedSavingId = exists.rows[0].id;
         if (!account["2001"]) throw new Error("बचत दायित्व खाता 2001 उपलब्ध छैन।");
       }
       let loan = null, installments = [];
@@ -148,9 +150,15 @@ export async function POST(request) {
       await client.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,$4,0,$5)", [voucherId,account[cashCode],memberId,total,"नगद/बैंक प्राप्ति"]);
       if (savingAmount > 0) {
         await client.query("INSERT INTO voucher_lines(voucher_id,account_id,member_id,debit,credit,narration) VALUES($1,$2,$3,0,$4,'मासिक बचत')", [voucherId,account["2001"],memberId,savingAmount]);
-        const receipt = await client.query(`INSERT INTO savings(organization_id,member_id,period_year,period_month,amount,paid_on,payment_method,receipt_no,status,received_by)
-          VALUES($1,$2,$3,$4,$5,COALESCE($6::date,CURRENT_DATE),$7,$8,'posted',$9) RETURNING id`,
-          [session.oid,memberId,year,month,savingAmount,date,method,voucherNo,session.uid||null]);
+        let receipt;
+        if (voidedSavingId) {
+          receipt = await client.query(`UPDATE savings SET amount=$1,paid_on=COALESCE($2::date,CURRENT_DATE),payment_method=$3,receipt_no=$4,status='posted',received_by=$5 WHERE id=$6 RETURNING id`,
+            [savingAmount,date,method,voucherNo,session.uid||null,voidedSavingId]);
+        } else {
+          receipt = await client.query(`INSERT INTO savings(organization_id,member_id,period_year,period_month,amount,paid_on,payment_method,receipt_no,status,received_by)
+            VALUES($1,$2,$3,$4,$5,COALESCE($6::date,CURRENT_DATE),$7,$8,'posted',$9) RETURNING id`,
+            [session.oid,memberId,year,month,savingAmount,date,method,voucherNo,session.uid||null]);
+        }
         await client.query("INSERT INTO member_ledger(organization_id,member_id,voucher_id,transaction_date,transaction_type,credit,narration) VALUES($1,$2,$3,COALESCE($4::date,CURRENT_DATE),'contribution',$5,'मासिक बचत')",
           [session.oid,memberId,voucherId,date,savingAmount]);
         results.push({ memberId, savingId:receipt.rows[0].id, savingAmount });
@@ -182,7 +190,7 @@ export async function POST(request) {
         [session.oid,cash.rows[0].id,date,total,voucherId,voucherNo,narration,session.uid||null]);
     }
     await client.query("COMMIT");
-    return NextResponse.json({ ok:true, count:results.length, results, message: "छानिएका सदस्यको मासिक बचत तथा किस्ता एकैपटक पोस्ट भयो।" });
+    return NextResponse.json({ ok:true, count:items.length, results, message: "छानिएका सदस्यको मासिक बचत तथा किस्ता एकैपटक पोस्ट भयो।" });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Monthly collection POST:", error);
