@@ -169,7 +169,7 @@ export default function BhalaiKoshPage() {
     setCollectionBusy(true);
     try{
       const r=await fetch("/api/bhalai-kosh/monthly-collection",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({year:Number(depositYear),month:Number(depositMonth),paidOn:collectionDate||null,items})});
+        body:JSON.stringify({year:Number(depositYear),month:Number(depositMonth),paidOn:collectionDate?bsToAdDate(collectionDate):null,items})});
       const d=await r.json();if(!r.ok)throw new Error(d.error||"मासिक बचत तथा किस्ता सुरक्षित गर्न सकिएन।");
       setNotice(d.message+" कुल "+d.count+" सदस्यको कारोबार पोस्ट भयो।");
       await loadMonthlyContributions();
@@ -394,7 +394,7 @@ export default function BhalaiKoshPage() {
                 <div className="flex flex-wrap gap-2">
                   <label className="text-xs font-semibold text-slate-500">वर्ष (वि.सं.)<select value={depositYear} onChange={e=>setDepositYear(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800">{Array.from({length:12},(_,i)=>String(2080+i)).map(y=><option key={y} value={y}>{y}</option>)}</select></label>
                   <label className="text-xs font-semibold text-slate-500">महिना<select value={depositMonth} onChange={e=>setDepositMonth(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800">{nepaliMonths.map((m,i)=><option key={m} value={String(i+1)}>{m}</option>)}</select></label>
-                  <label className="text-xs font-semibold text-slate-500">जम्मा मिति<input type="date" value={collectionDate} onChange={e=>setCollectionDate(e.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"/></label>
+                  <label className="text-xs font-semibold text-slate-500">जम्मा मिति (वि.सं.)<input value={collectionDate} onChange={e=>setCollectionDate(e.target.value.replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)))} placeholder="२०८३-०७-२३" className="mt-1 block w-36 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"/></label>
                 </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-4">
