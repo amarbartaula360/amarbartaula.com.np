@@ -23,7 +23,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const s=await getBhalaiKoshSession(); if(!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
-  if(!["admin","super_admin","accountant"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
+  if(!["admin","super_admin","accountant"].includes(s.role)||!hasBhalaiKoshPermission(s,"savings")) return NextResponse.json({error:"Permission denied"},{status:403});
   const b=await request.json(); const memberId=Number(b.memberId), year=Number(b.year), month=Number(b.month), amount=Number(b.amount);
   if(!Number.isInteger(memberId)||!Number.isInteger(year)||!Number.isInteger(month)||month<1||month>12||!Number.isFinite(amount)||amount<=0)
     return NextResponse.json({error:"सदस्य, महिना र सही रकम आवश्यक छ।"},{status:400});
