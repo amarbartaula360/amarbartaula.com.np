@@ -80,10 +80,12 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getBhalaiKoshSession();
   if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!roles.includes(session.role) || !hasBhalaiKoshPermission(session,"savings") || !hasBhalaiKoshPermission(session,"loans")) return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+  if (!roles.includes(session.role)) return NextResponse.json({ error: "Permission denied" }, { status: 403 });
   const body = await request.json();
   const year = Number(body.year), month = Number(body.month);
   const items = Array.isArray(body.items) ? body.items : [];
+  if (items.some(x=>x.saveSaving===true) && !hasBhalaiKoshPermission(session,"savings")) return NextResponse.json({error:"मासिक बचत अनुमति छैन।"},{status:403});
+  if (items.some(x=>x.saveLoan===true) && !hasBhalaiKoshPermission(session,"loans")) return NextResponse.json({error:"ऋण किस्ता अनुमति छैन।"},{status:403});
   if (!Number.isInteger(year) || year < 2000 || !Number.isInteger(month) || month < 1 || month > 12 || !items.length)
     return NextResponse.json({ error: "महिना र कम्तीमा एउटा बचत वा किस्ता छान्नुहोस्।" }, { status: 400 });
   const db = getBhalaiKoshPool(), client = await db.connect();
