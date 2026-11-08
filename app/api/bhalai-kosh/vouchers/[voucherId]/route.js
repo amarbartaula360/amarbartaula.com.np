@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 const allowed = ["admin","super_admin","accountant"];
 const amount = value => Number(Number(value || 0).toFixed(2));
@@ -9,6 +9,7 @@ export async function GET(_request,{params}) {
   try {
     const session=await getBhalaiKoshSession();
     if(!session?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
+    if(!hasBhalaiKoshPermission(session,"vouchers"))return NextResponse.json({error:"Voucher हेर्ने अनुमति छैन।"},{status:403});
     const {voucherId}=await params;
     const db=getBhalaiKoshPool();
     const v=await db.query(`SELECT id,voucher_no,voucher_type,voucher_date,narration,status,reference_type,reference_id
@@ -24,7 +25,7 @@ export async function GET(_request,{params}) {
 export async function PATCH(request,{params}) {
   const session=await getBhalaiKoshSession();
   if(!session?.oid)return NextResponse.json({error:"Unauthorized"},{status:401});
-  if(!allowed.includes(session.role))return NextResponse.json({error:"Permission denied"},{status:403});
+  if(!allowed.includes(session.role)||!hasBhalaiKoshPermission(session,"vouchers"))return NextResponse.json({error:"Permission denied"},{status:403});
   const {voucherId}=await params;
   const body=await request.json();
   const date=String(body.date||"").trim(), narration=String(body.narration||"").trim();
