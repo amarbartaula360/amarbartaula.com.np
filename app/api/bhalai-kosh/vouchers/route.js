@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 const allowed = ["admin","super_admin","accountant"];
 const money = n => Number(Number(n).toFixed(2));
 export async function GET(request) {
   try {
     const s=await getBhalaiKoshSession(); if(!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
+    if(!hasBhalaiKoshPermission(s,"vouchers"))return NextResponse.json({error:"Voucher हेर्ने अनुमति छैन।"},{status:403});
     const {searchParams}=new URL(request.url);
     const type=searchParams.get("type");
     const values=[s.oid]; let filter="";
@@ -24,7 +25,7 @@ export async function GET(request) {
 }
 export async function POST(request) {
   const s=await getBhalaiKoshSession(); if(!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
-  if(!allowed.includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
+  if(!allowed.includes(s.role)||!hasBhalaiKoshPermission(s,"vouchers")) return NextResponse.json({error:"Permission denied"},{status:403});
   const b=await request.json(), type=String(b.type||"");
   if(!["journal","payment"].includes(type)) return NextResponse.json({error:"Journal वा Payment Voucher छान्नुहोस्।"},{status:400});
   const date=b.date||null, narration=String(b.narration||"").trim(), lines=Array.isArray(b.lines)?b.lines:[];
