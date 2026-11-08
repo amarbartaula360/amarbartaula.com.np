@@ -70,7 +70,7 @@ export async function GET() {
       savings:{total:Number(savings.rows[0]?.total_savings||0)},
       schoolInvestment:{amount:Number(schoolInvestment.rows[0]?.amount||0),date:schoolInvestment.rows[0]?.investment_date||null},
       cashBank:{accounts,total:accounts.reduce((s,x)=>s+x.balance,0),cash:accounts.filter(x=>x.account_type==='cash').reduce((s,x)=>s+x.balance,0),bank:accounts.filter(x=>x.account_type==='bank').reduce((s,x)=>s+x.balance,0),bankLedger:bankLedger.rows},
-      income:{interest:Number(l.interest_income_received||0),otherLoan:Number(l.fee_income_received||0),total:Number(i.total_income||0)},
+      income:{interest:Number(i.interest_income||0),otherLoan:Number(i.other_loan_income||0),total:Number(i.total_income||0)},
       activeMembers:Number(members.rows[0]?.active_members||0)
     });
   } catch (error) {
