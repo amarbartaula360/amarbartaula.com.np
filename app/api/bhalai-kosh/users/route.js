@@ -47,7 +47,7 @@ export async function POST(request) {
     const user=inserted.rows[0];
     await c.query(`INSERT INTO bhalai_kosh_user_permissions(user_id,organization_id,permissions)
       VALUES($1,$2,$3::jsonb)`,[user.id,s.oid,JSON.stringify(permissions)]);
-    await c.query("INSERT INTO audit_logs(organization_id,user_id,action,entity_type,entity_id) VALUES($1,$2,'user_create','user',$2)",[s.oid,s.uid||null]);
+    await c.query("INSERT INTO audit_logs(organization_id,user_id,action,entity_type,entity_id) VALUES($1,$2,'user_create','user',$3)",[s.oid,s.uid||null,user.id]);
     await c.query("COMMIT");
     return NextResponse.json({ok:true,user:{...user,permissions},message:"नयाँ User ID सफलतापूर्वक बन्यो।"},{status:201});
   }catch(e){await c.query("ROLLBACK");if(e.code==="23505")return NextResponse.json({error:"यो Email/User ID पहिले नै प्रयोग भएको छ।"},{status:409});console.error("Bhalai users POST",e);return NextResponse.json({error:"नयाँ प्रयोगकर्ता बनाउन सकिएन।"},{status:500});}
