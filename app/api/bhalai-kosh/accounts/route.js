@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBhalaiKoshPool } from "@/lib/bhalai-kosh-db";
-import { getBhalaiKoshSession } from "@/lib/bhalai-kosh-auth";
+import { getBhalaiKoshSession, hasBhalaiKoshPermission } from "@/lib/bhalai-kosh-auth";
 export const runtime = "nodejs";
 const allowedRoles = ["admin", "super_admin", "accountant"];
 const validTypes = ["asset", "liability", "equity", "income", "expense"];
@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const session = await getBhalaiKoshSession();
     if (!session?.oid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!allowedRoles.includes(session.role)) return NextResponse.json({ error: "यो खाता थप्ने अनुमति छैन।" }, { status: 403 });
+    if (!allowedRoles.includes(session.role) || !hasBhalaiKoshPermission(session,"finance")) return NextResponse.json({ error: "यो खाता थप्ने अनुमति छैन।" }, { status: 403 });
     const body = await request.json();
     const accountCode = String(body.accountCode || "").trim();
     const accountName = String(body.accountName || "").trim();
