@@ -71,6 +71,7 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   const s=await getBhalaiKoshSession(); if(!s?.oid) return NextResponse.json({error:"Unauthorized"},{status:401});
+  if(!hasBhalaiKoshPermission(s,"savings"))return NextResponse.json({error:"मासिक बचत अनुमति छैन।"},{status:403});
   if(!["admin","super_admin","accountant"].includes(s.role)) return NextResponse.json({error:"Permission denied"},{status:403});
   const id=Number(new URL(request.url).searchParams.get("id"));
   if(!Number.isInteger(id)||id<=0) return NextResponse.json({error:"सही बचत अभिलेख छान्नुहोस्।"},{status:400});
