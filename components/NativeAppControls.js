@@ -90,8 +90,18 @@ export default function NativeAppControls() {
 
   const closeApp = async () => {
     if (!nativeApp) return;
-    const confirmed = window.confirm("के तपाईं Amar Bartaula App बन्द गर्न चाहनुहुन्छ?");
-    if (confirmed) await App.exitApp();
+    try {
+      // Finish the Android Activity immediately; do not block this native action
+      // behind a WebView confirm dialog.
+      await App.exitApp();
+    } catch (error) {
+      // If the device/plugin cannot finish the Activity, send the app to background.
+      try {
+        await App.minimizeApp();
+      } catch {
+        console.error("Unable to close or minimize the Android app", error);
+      }
+    }
   };
 
   const downloadUpdate = async () => {
