@@ -37,7 +37,7 @@ const projects = [
     description: 'A school-focused platform for student fee tracking and parent communication workflows.',
     status: 'Open software',
     icon: PhoneCall,
-    href: 'https://fee.amarbartaula.com.np/'
+    href: 'https://www.amarbartaula.com.np/fee'
   }
 ];
 
