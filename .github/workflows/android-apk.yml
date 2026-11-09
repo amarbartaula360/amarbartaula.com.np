@@ -1,0 +1,77 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "capacitor.config.json"
+      - "www/**"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install Capacitor
+        run: npm install --no-save --no-package-lock @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Prepare APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist/Amar-Bartaula.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Amar-Bartaula-Android-APK
+          path: dist/Amar-Bartaula.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish APK download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v1.0.0
+          name: Amar Bartaula Android App v1.0.0
+          body: |
+            Android app for the complete Amar Bartaula website.
+            Install the APK on an Android device. This build loads the live website.
+          files: dist/Amar-Bartaula.apk
+          overwrite_files: true
+          make_latest: true
