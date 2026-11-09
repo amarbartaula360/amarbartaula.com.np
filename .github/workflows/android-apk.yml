@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - "capacitor.config.json"
+      - "package.json"
+      - "app/**"
+      - "components/**"
       - "www/**"
       - ".github/workflows/android-apk.yml"
 
@@ -39,7 +42,7 @@ jobs:
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install Capacitor
-        run: npm install --no-save --no-package-lock @capacitor/core @capacitor/cli @capacitor/android
+        run: npm install --no-save --no-package-lock @capacitor/core @capacitor/cli @capacitor/android @capacitor/app
 
       - name: Generate Android project
         run: npx cap add android
@@ -73,7 +76,8 @@ jobs:
           name: Amar Bartaula Android App v1.0.0
           body: |
             Android app for the complete Amar Bartaula website.
-            Install the APK on an Android device. This build loads the live website.
+            Includes an in-app exit button and Android back-button handling.
+            This build loads the live website.
           files: dist/Amar-Bartaula.apk
           overwrite_files: true
           make_latest: true
