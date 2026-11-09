@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 const profilePhoto = "https://raw.githubusercontent.com/amarbartaula360/school-accounting-software/main/client/assets/profile.jpg";
 import {
   ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor,
-  PhoneCall, Sparkles, X, Globe2
+  PhoneCall, Sparkles, X, Globe2, Download
 } from 'lucide-react';
 
 const projects = [
@@ -171,6 +171,7 @@ export default function Home() {
                 <span className="amar-nav-ad">{nepalDate}</span>
               </div>
             </div>
+            <a className="amar-btn" href="https://github.com/amarbartaula360/amarbartaula.com.np/releases/download/android-v1.0.0/Amar-Bartaula.apk"> <Download size={14}/> Download APK</a>
             <a className="amar-btn" href="#contact">Let’s talk <ArrowUpRight size={15}/></a>
             <button className="amar-menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation">{menuOpen ? <X size={19}/> : <Menu size={19}/>}</button>
           </div>
@@ -188,6 +189,7 @@ export default function Home() {
               <div className="amar-actions">
                 <a className="amar-btn primary" href="#projects">Explore my work <ArrowUpRight size={16}/></a>
                 <a className="amar-btn" href="#contact"><Mail size={15}/> Get in touch</a>
+                <a className="amar-btn" href="https://github.com/amarbartaula360/amarbartaula.com.np/releases/download/android-v1.0.0/Amar-Bartaula.apk"><Download size={15}/> Download Android App</a>
               </div>
               <div className="amar-location"><Globe2 size={14}/> Based in Nepal · Building for the web</div>
             </div>
