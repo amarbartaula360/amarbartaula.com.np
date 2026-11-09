@@ -78,8 +78,9 @@ export default function BhalaiKoshPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newId, setNewId] = useState("");
   const [notice, setNotice] = useState("Database बाट सदस्य विवरण लोड हुँदैछ।");
-  const [depositYear, setDepositYear] = useState("2082");
-  const [depositMonth, setDepositMonth] = useState("1");
+  // Default monthly collection to the current Nepali BS month, not a fixed old year/month.
+  const [depositYear, setDepositYear] = useState("");
+  const [depositMonth, setDepositMonth] = useState("");
   const [contributions, setContributions] = useState([]);
   const [monthlyCollectionMembers,setMonthlyCollectionMembers] = useState([]);
   const [collectionSelection,setCollectionSelection] = useState({});
@@ -89,6 +90,11 @@ export default function BhalaiKoshPage() {
   const [depositAmounts, setDepositAmounts] = useState({});
   const [depositDates, setDepositDates] = useState({});
   const [depositMethods, setDepositMethods] = useState({});
+  useEffect(() => {
+    const [year, month] = new NepaliDate().format("YYYY-MM-DD").split("-");
+    setDepositYear(year);
+    setDepositMonth(String(Number(month)));
+  }, []);
   const [depositLoading, setDepositLoading] = useState(false);
   const [savingMemberId, setSavingMemberId] = useState(null);
   const [annualRows, setAnnualRows] = useState([]);
