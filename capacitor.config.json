@@ -1,0 +1,16 @@
+{
+  "appId": "np.com.amarbartaula.app",
+  "appName": "Amar Bartaula",
+  "webDir": "www",
+  "server": {
+    "url": "https://www.amarbartaula.com.np",
+    "cleartext": false,
+    "allowNavigation": [
+      "www.amarbartaula.com.np",
+      "amarbartaula.com.np",
+      "*.amarbartaula.com.np",
+      "school-accounting-frontend.onrender.com",
+      "fee.amarbartaula.com.np"
+    ]
+  }
+}
