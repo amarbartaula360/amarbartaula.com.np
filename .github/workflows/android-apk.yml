@@ -41,14 +41,30 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      # Keep the same debug signing key between builds so Android accepts in-place updates.
+      - name: Restore Android signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: amar-bartaula-android-signing-key-v1
+
       - name: Install Capacitor
-        run: npm install --no-save --no-package-lock @capacitor/core @capacitor/cli @capacitor/android @capacitor/app
+        run: npm install --no-save --no-package-lock @capacitor/core @capacitor/cli @capacitor/android @capacitor/app @capacitor/browser
 
       - name: Generate Android project
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Set Android app version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          VERSION_CODE=$(node -e "const [a,b,c]=process.argv[1].split('.').map(Number); console.log(a*1000000+b*1000+c)" "$VERSION")
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode ${VERSION_CODE}/" android/app/build.gradle
+          sed -i -E "s/versionName[[:space:]]+['\"][^'\"]*['\"]/versionName \"${VERSION}\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
 
       - name: Build APK
         working-directory: android
@@ -64,20 +80,20 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Amar-Bartaula-Android-APK
+          name: Amar-Bartaula-Android-APK-v${{ env.APP_VERSION }}
           path: dist/Amar-Bartaula.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish APK download release
+      - name: Publish versioned APK download release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-v1.0.0
-          name: Amar Bartaula Android App v1.0.0
+          tag_name: android-v${{ env.APP_VERSION }}
+          name: Amar Bartaula Android App v${{ env.APP_VERSION }}
           body: |
             Android app for the complete Amar Bartaula website.
-            Includes an in-app exit button and Android back-button handling.
-            This build loads the live website.
+            Checks GitHub Releases automatically and offers an in-app APK update.
+            Android asks the user to confirm installation.
           files: dist/Amar-Bartaula.apk
           overwrite_files: true
           make_latest: true
