@@ -12,11 +12,11 @@ const nextConfig = {
     return [
       {
         source: "/fee",
-        destination: "https://uebs-fee-reminder.onrender.com/",
+        destination: "https://uebs-fee-reminder.onrender.com/fee",
       },
       {
         source: "/fee/:path*",
-        destination: "https://uebs-fee-reminder.onrender.com/:path*",
+        destination: "https://uebs-fee-reminder.onrender.com/fee/:path*",
       },
     ];
   },
