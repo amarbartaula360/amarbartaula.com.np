@@ -8,14 +8,17 @@ export async function POST(request){const {response}=await requireConstructionRo
 
 export async function PATCH(request){
  const {response}=await requireConstructionRole("admin");if(response)return response;
- const b=await request.json().catch(()=>null);
- const id=Number(b?.id);if(!Number.isInteger(id)||id<=0)return Response.json({error:"Valid supplier id is required"},{status:400});
- const name=String(b?.name||"").trim();if(!name)return Response.json({error:"Supplier name is required"},{status:400});
- const phone=String(b?.phone||"").trim(),email=String(b?.email||"").trim()||null,address=String(b?.address||"").trim()||null;
- const active=b?.active===undefined?true:Boolean(b.active);
+ const b=await request.json().catch(()=>null),id=Number(b?.id);
+ if(!Number.isInteger(id)||id<1)return Response.json({error:"Valid supplier id required"},{status:400});
+ const name=String(b?.name||"").trim(),code=String(b?.code||"").trim();
+ if(!name||!code)return Response.json({error:"Supplier name and Login ID are required"},{status:400});
+ const password=b.password===undefined||b.password===null?"":String(b.password);
+ if(password&&password.length<8)return Response.json({error:"Password must be at least 8 characters"},{status:400});
  try{
-  const {rows}=await getConstructionPool().query("UPDATE cm_suppliers SET name=$1,phone=$2,email=$3,address=$4,active=$5 WHERE id=$6 RETURNING id,supplier_code,name,phone,email,address,service_areas,active,created_at",[name,phone,email,address,active,id]);
+  const passwordHash=password?await bcrypt.hash(password,12):null;
+  const {rows}=await getConstructionPool().query("UPDATE cm_suppliers SET supplier_code=$1,name=$2,phone=$3,email=$4,address=$5,active=$6,password_hash=COALESCE($7,password_hash) WHERE id=$8 RETURNING id,supplier_code,name,phone,email,address,service_areas,active,created_at",
+   [code,name,String(b.phone||"").trim(),String(b.email||"").trim()||null,String(b.address||"").trim()||null,b.active!==false,passwordHash,id]);
   if(!rows.length)return Response.json({error:"Supplier not found"},{status:404});
-  return Response.json({supplier:rows[0]});
- }catch(e){console.error("Update supplier:",e);return Response.json({error:"Could not update supplier information"},{status:500});}
+  return Response.json({supplier:rows[0],passwordUpdated:Boolean(password)});
+ }catch(e){console.error("Update supplier:",e);return Response.json({error:"Login ID duplicate हुन सक्छ वा Supplier अपडेट हुन सकेन।"},{status:409});}
 }
