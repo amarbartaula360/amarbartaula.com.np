@@ -27,7 +27,7 @@ export async function GET(request){
  }catch(e){console.error("Supplier payment ledger:",e);return Response.json({error:"Supplier ledger unavailable"},{status:503});}
 }
 export async function POST(request){
- const {response,user}=await requireConstructionRole("admin");if(response)return response;
+ const {response,session}=await requireConstructionRole("admin");if(response)return response;
  const b=await request.json().catch(()=>null),orderId=Number(b?.orderId),amount=Number(b?.amount),method=String(b?.paymentMethod||"");
  if(!Number.isInteger(orderId)||orderId<1||!Number.isFinite(amount)||amount<=0||!["cash","bank","online","cheque"].includes(method))return Response.json({error:"Valid order, amount and payment method required"},{status:400});
  const client=await getConstructionPool().connect();
@@ -40,7 +40,7 @@ export async function POST(request){
   if(amount>due+0.0001){await client.query("ROLLBACK");return Response.json({error:"भुक्तानी बाँकी रकमभन्दा बढी भयो। बाँकी: "+due.toFixed(2)},{status:400});}
   const inserted=await client.query(`INSERT INTO cm_supplier_payments(supplier_id,order_id,amount,payment_method,reference_no,note,created_by)
    VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,supplier_id,order_id,amount::float AS amount,payment_method,reference_no,note,paid_at`,
-   [order.supplier_id,orderId,amount,method,String(b.referenceNo||"").trim()||null,String(b.note||"").trim()||null,user?.name||"admin"]);
+   [order.supplier_id,orderId,amount,method,String(b.referenceNo||"").trim()||null,String(b.note||"").trim()||null,session?.name||"admin"]);
   await client.query("COMMIT");return Response.json({payment:inserted.rows[0]},{status:201});
  }catch(e){await client.query("ROLLBACK");console.error("Supplier payment:",e);return Response.json({error:"Could not record supplier payment"},{status:500});}finally{client.release();}
 }
