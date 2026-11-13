@@ -12,7 +12,8 @@ export default function ConstructionMaterials(){
  const [user,setUser]=useState(null),[tab,setTab]=useState("catalog"),[search,setSearch]=useState(""),[notice,setNotice]=useState(""),[tracking,setTracking]=useState(""),[trackResult,setTrackResult]=useState(null),[loginOpen,setLoginOpen]=useState(false),[login,setLogin]=useState({username:"",password:""});
  const [form,setForm]=useState({name:"",phone:"",email:"",productId:"",quantity:1,address:"",landmark:"",latitude:"",longitude:"",note:""});
  const [supplierForm,setSupplierForm]=useState({name:"",phone:"",email:"",address:"",code:"",password:""});
- const [supplierEdit,setSupplierEdit]=useState(null);\n const [userAccounts,setUserAccounts]=useState({admins:[],suppliers:[]});\n const [accountForm,setAccountForm]=useState({accountType:"admin",supplierId:"",name:"",loginId:"",password:""});
+ const [supplierEdit,setSupplierEdit]=useState(null);
+ const [userAccounts,setUserAccounts]=useState({admins:[],suppliers:[]});\n const [accountForm,setAccountForm]=useState({accountType:"admin",supplierId:"",name:"",loginId:"",password:""});
  const [productForm,setProductForm]=useState({sku:"",name:"",description:"",unit:"ट्रिप",price:"",stock:""});
  const [busy,setBusy]=useState(false);
  const flash=msg=>{setNotice(msg);setTimeout(()=>setNotice(""),4500);};
