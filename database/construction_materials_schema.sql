@@ -1,5 +1,4 @@
 -- Online Construction Materials: PostgreSQL schema
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS cm_products (
  id BIGSERIAL PRIMARY KEY, sku TEXT UNIQUE NOT NULL, name TEXT NOT NULL, description TEXT DEFAULT '',
  unit TEXT NOT NULL DEFAULT 'trip', price NUMERIC(14,2) NOT NULL CHECK(price >= 0),
