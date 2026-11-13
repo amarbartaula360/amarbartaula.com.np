@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 const profilePhoto = "https://raw.githubusercontent.com/amarbartaula360/school-accounting-software/main/client/assets/profile.jpg";
 import {
-  ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor,
+  ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor, Truck,
   PhoneCall, Sparkles, X, Globe2, Download
 } from 'lucide-react';
 
@@ -32,6 +32,14 @@ const projects = [
     href: '/exam'
   },
   {
+    title: 'Online Construction Materials',
+    category: 'Business Systems',
+    description: 'Online ordering and supply management for sand, stones and gravel, with order tracking, supplier assignment and inventory management.',
+    status: 'Preview',
+    icon: Truck,
+    href: '/construction-materials'
+  },
+  {
     title: 'School Fee Reminder',
     category: 'School Systems',
     description: 'A school-focused platform for student fee tracking and parent communication workflows.',
@@ -41,7 +49,7 @@ const projects = [
   }
 ];
 
-const filters = ['All', 'Bhalai Kosh', 'Accounting', 'School Systems'];
+const filters = ['All', 'Bhalai Kosh', 'Accounting', 'School Systems', 'Business Systems'];
 const skills = ['React', 'JavaScript', 'Vite', 'Node.js', 'REST APIs', 'PostgreSQL', 'Git & GitHub', 'School Information Systems'];
 
 export default function Home() {
