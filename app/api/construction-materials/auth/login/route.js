@@ -8,10 +8,19 @@ export async function POST(request) {
  if(!username||!password) return Response.json({error:"Username and password required"},{status:400});
  try {
   const pool=getConstructionPool();
-  let result=await pool.query("SELECT id,username AS name,password_hash,'admin' AS role,NULL::bigint AS supplier_id FROM cm_admin_users WHERE username=$1 AND active=true",[username]);
-  if(!result.rowCount) result=await pool.query("SELECT id,name,password_hash,'supplier' AS role,id AS supplier_id FROM cm_suppliers WHERE supplier_code=$1 AND active=true",[username]);
-  const user=result.rows[0];
-  if(!user||!(await bcrypt.compare(password,user.password_hash))) return Response.json({error:"Login विवरण मिलेन।"},{status:401});
+  const expectedRole=body?.expectedRole==="admin"||body?.expectedRole==="supplier"?body.expectedRole:null;
+  const adminResult=await pool.query("SELECT id,username AS name,password_hash,'admin' AS role,NULL::bigint AS supplier_id FROM cm_admin_users WHERE username=$1 AND active=true",[username]);
+  const supplierResult=await pool.query("SELECT id,name,password_hash,'supplier' AS role,id AS supplier_id FROM cm_suppliers WHERE supplier_code=$1 AND active=true",[username]);
+  const candidates=[...adminResult.rows,...supplierResult.rows];
+  let user=null;
+  for(const candidate of candidates){if(await bcrypt.compare(password,candidate.password_hash)){user=candidate;break;}}
+  if(!user) return Response.json({error:"Login ID वा Password मिलेन।"},{status:401});
+  if(expectedRole&&user.role!==expectedRole){
+   const message=expectedRole==="admin"
+    ?"यो Supplier खाता हो। कृपया Supplier Login प्रयोग गर्नुहोस्।"
+    :"यो Admin खाता हो। कृपया Admin Login प्रयोग गर्नुहोस्।";
+   return Response.json({error:message,code:"ROLE_MISMATCH"},{status:403});
+  }
   await createConstructionSession(user);
   if(user.role==="admin") await pool.query("UPDATE cm_admin_users SET last_login_at=NOW() WHERE id=$1",[user.id]);
   return Response.json({user:{id:user.id,name:user.name,role:user.role,supplierId:user.supplier_id}});
