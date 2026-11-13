@@ -10,7 +10,7 @@ export async function PATCH(request) {
  const {response}=await requireConstructionRole("admin"); if(response)return response;
  const b=await request.json().catch(()=>null);
  if(!Number.isInteger(Number(b?.id)))return Response.json({error:"Valid order id required"},{status:400});
- const allowed=["pending","approved","dispatched","delivered","rejected","cancelled"];
+ const allowed=["pending","approved","dispatched","delivered","rejected","cancelled"], terminal=["rejected","cancelled"];
  const client=await getConstructionPool().connect();
  try {
   await client.query("BEGIN");
@@ -21,6 +21,16 @@ export async function PATCH(request) {
   if(supplierId){const s=await client.query("SELECT id FROM cm_suppliers WHERE id=$1 AND active=true",[supplierId]);if(!s.rowCount){await client.query("ROLLBACK");return Response.json({error:"Supplier not found"},{status:400});}}
   const paymentStatus=b.paymentStatus||o.payment_status, amountPaid=b.amountPaid===undefined?Number(o.amount_paid):Number(b.amountPaid);
   if(!["unpaid","partial","paid","refunded"].includes(paymentStatus)||!Number.isFinite(amountPaid)||amountPaid<0||amountPaid>Number(o.total)){await client.query("ROLLBACK");return Response.json({error:"Invalid payment details"},{status:400});}
+  const wasTerminal=terminal.includes(o.status), willBeTerminal=terminal.includes(status);
+  if(!wasTerminal&&willBeTerminal){
+   await client.query("UPDATE cm_products SET stock=stock+$1,updated_at=NOW() WHERE id=$2",[o.quantity,o.product_id]);
+   await client.query("INSERT INTO cm_inventory_movements(product_id,movement_type,quantity,reference,note) VALUES($1,'return',$2,$3,'Stock restored after order rejection/cancellation')",[o.product_id,o.quantity,o.tracking_id]);
+  } else if(wasTerminal&&!willBeTerminal){
+   const product=await client.query("SELECT stock FROM cm_products WHERE id=$1 FOR UPDATE",[o.product_id]);
+   if(!product.rowCount||Number(product.rows[0].stock)<Number(o.quantity)){await client.query("ROLLBACK");return Response.json({error:"Reactivation failed: insufficient stock"},{status:409});}
+   await client.query("UPDATE cm_products SET stock=stock-$1,updated_at=NOW() WHERE id=$2",[o.quantity,o.product_id]);
+   await client.query("INSERT INTO cm_inventory_movements(product_id,movement_type,quantity,reference,note) VALUES($1,'sale',$2,$3,'Stock reserved after order reactivation')",[o.product_id,-o.quantity,o.tracking_id]);
+  }
   await client.query(`UPDATE cm_orders SET status=$1,supplier_id=$2,payment_status=$3,amount_paid=$4,payment_method=COALESCE($5,payment_method),updated_at=NOW(),dispatched_at=CASE WHEN $1='dispatched' THEN COALESCE(dispatched_at,NOW()) ELSE dispatched_at END,delivered_at=CASE WHEN $1='delivered' THEN COALESCE(delivered_at,NOW()) ELSE delivered_at END WHERE id=$6`,[status,supplierId,paymentStatus,amountPaid,b.paymentMethod||null,o.id]);
   if(status!==o.status)await client.query("INSERT INTO cm_order_status_history(order_id,old_status,new_status,note,changed_by) VALUES($1,$2,$3,$4,'admin')",[o.id,o.status,status,b.note||null]);
   await client.query("COMMIT"); return Response.json({ok:true});
