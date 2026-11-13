@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { getConstructionPool } from "@/lib/construction-materials-db";
-import { requireConstructionRole, getConstructionSession } from "@/lib/construction-materials-auth";
+import { requireConstructionRole } from "@/lib/construction-materials-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,8 @@ export async function POST(request) {
   try {
     const passwordHash = await bcrypt.hash(password, 12);
     if (accountType === "admin") {
+      const supplierCollision = await pool.query("SELECT 1 FROM cm_suppliers WHERE supplier_code=$1 LIMIT 1", [loginId]);
+      if (supplierCollision.rowCount) return Response.json({ error: "यो Login ID Supplier ले प्रयोग गरिरहेको छ।" }, { status: 409 });
       const name = String(body.name || "Administrator").trim() || "Administrator";
       const { rows } = await pool.query(
         "INSERT INTO cm_admin_users(username,password_hash,name) VALUES($1,$2,$3) RETURNING id,username AS login_id,name,active,created_at",
@@ -45,6 +47,8 @@ export async function POST(request) {
       );
       return Response.json({ account: { ...rows[0], account_type: "admin" } }, { status: 201 });
     }
+    const adminCollision = await pool.query("SELECT 1 FROM cm_admin_users WHERE username=$1 LIMIT 1", [loginId]);
+    if (adminCollision.rowCount) return Response.json({ error: "यो Login ID Admin ले प्रयोग गरिरहेको छ।" }, { status: 409 });
     const supplierId = Number(body.supplierId);
     if (!Number.isInteger(supplierId) || supplierId < 1) return Response.json({ error: "Supplier छान्नुहोस्।" }, { status: 400 });
     const { rows } = await pool.query(
