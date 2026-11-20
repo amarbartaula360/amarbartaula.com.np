@@ -43,9 +43,9 @@ const projects = [
     title: 'Makawanpur Chamber of Commerce and Industry – Paschim Chhetra Samiti',
     category: 'Business Systems',
     description: 'A bilingual business registry and management system for businesses in Manahari Rural Municipality, including registration, renewals, tax clearance, memberships and reports.',
-    status: 'In development',
+    status: 'Live',
     icon: Building2,
-    href: '/mauhba'
+    href: 'https://manahari-business-management.onrender.com/mauhba/login'
   },
   {
     title: 'School Fee Reminder',
