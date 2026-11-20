@@ -26,8 +26,8 @@ export async function POST(request) {
     if (!body.name_ne?.trim()) return NextResponse.json({ error: "व्यवसायको नाम आवश्यक छ" }, { status: 400 });
     await client.query("BEGIN");
     const code = body.business_code?.trim() || `MH-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
-    const b = await client.query(`INSERT INTO businesses (id,business_code,name_ne,name_en,category_id,business_type,pan_number,vat_number,registration_number,registration_date_bs,registration_date_ad,status,notes)
-      VALUES (nextval(pg_get_serial_sequence('businesses','id')),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+    const b = await client.query(`INSERT INTO businesses (business_code,name_ne,name_en,category_id,business_type,pan_number,vat_number,registration_number,registration_date_bs,registration_date_ad,status,notes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
       [code,body.name_ne.trim(),body.name_en||null,body.category_id||null,body.business_type||null,body.pan_number||null,body.vat_number||null,body.registration_number||null,body.registration_date_bs||null,body.registration_date_ad||null,body.status||"active",body.notes||null]);
     const id = b.rows[0].id;
     if (body.owner_name) await client.query("INSERT INTO business_owners (id,business_id,full_name_ne,is_primary) VALUES (nextval(pg_get_serial_sequence('business_owners','id')),$1,$2,true)",[id,body.owner_name]);
