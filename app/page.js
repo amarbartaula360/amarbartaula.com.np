@@ -45,7 +45,7 @@ const projects = [
     description: 'A bilingual business registry and management system for businesses in Manahari Rural Municipality, including registration, renewals, tax clearance, memberships and reports.',
     status: 'Live',
     icon: Building2,
-    href: 'https://manahari-business-management.onrender.com/mauhba/login'
+    href: '/mauhba'
   },
   {
     title: 'School Fee Reminder',
