@@ -18,6 +18,18 @@ const nextConfig = {
         source: "/fee/:path*",
         destination: "https://uebs-fee-reminder.onrender.com/fee/:path*",
       },
+      {
+        source: "/mauhba",
+        destination: "https://manahari-business-management.onrender.com/mauhba",
+      },
+      {
+        source: "/mauhba/:path*",
+        destination: "https://manahari-business-management.onrender.com/mauhba/:path*",
+      },
+      {
+        source: "/api/mauhba/:path*",
+        destination: "https://manahari-business-management.onrender.com/api/mauhba/:path*",
+      },
     ];
   },
 };
