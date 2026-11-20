@@ -32,7 +32,7 @@ export async function POST(request) {
     const id = b.rows[0].id;
     if (body.owner_name) await client.query("INSERT INTO business_owners (business_id,full_name_ne,is_primary) VALUES ($1,$2,true)",[id,body.owner_name]);
     if (body.phone || body.email) await client.query("INSERT INTO business_contacts (business_id,phone,email,is_primary) VALUES ($1,$2,$3,true)",[id,body.phone||null,body.email||null]);
-    if (body.ward_no || body.tole) await client.query("INSERT INTO business_addresses (id,business_id,ward_no,tole,is_primary) VALUES (nextval(pg_get_serial_sequence('business_addresses','id')),$1,$2,$3,true)",[id,body.ward_no||null,body.tole||null]);
+    if (body.ward_no || body.tole) await client.query("INSERT INTO business_addresses (business_id,ward_no,tole,is_primary) VALUES ($1,$2,$3,true)",[id,body.ward_no||null,body.tole||null]);
     await client.query("INSERT INTO activity_logs (id,user_id,entity_type,entity_id,action,new_values) VALUES (nextval(pg_get_serial_sequence('activity_logs','id')),$1,'business',$2,'create',$3)",[user.id,id,JSON.stringify({business_code:code,name_ne:body.name_ne})]);
     await client.query("COMMIT");
     return NextResponse.json({ id, business_code: code }, { status: 201 });
