@@ -24,7 +24,7 @@ export async function DELETE(_request,{params}) {
   const client=await db().connect();
   try {const user=await requireAdmin();const {id}=await params;await client.query("BEGIN");
     await client.query("UPDATE businesses SET status='inactive',updated_at=now() WHERE id=$1",[id]);
-    await client.query("INSERT INTO activity_logs (id,user_id,entity_type,entity_id,action) VALUES (nextval(pg_get_serial_sequence('activity_logs','id')),$1,'business',$2,'deactivate')",[user.id,id]);
+    await client.query("INSERT INTO activity_logs (user_id,entity_type,entity_id,action) VALUES ($1,'business',$2,'deactivate')",[user.id,id]);
     await client.query("COMMIT");return NextResponse.json({ok:true});
   }catch(e){await client.query("ROLLBACK").catch(()=>{});return NextResponse.json({error:e.message},{status:e.status||500});}finally{client.release();}
 }
