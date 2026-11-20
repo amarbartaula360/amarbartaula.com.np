@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 const profilePhoto = "https://raw.githubusercontent.com/amarbartaula360/school-accounting-software/main/client/assets/profile.jpg";
 import {
-  ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor, Truck,
+  ArrowUpRight, Code2, Database, GraduationCap, Mail, Menu, Monitor, Truck, Building2,
   PhoneCall, Sparkles, X, Globe2, Download
 } from 'lucide-react';
 
@@ -38,6 +38,14 @@ const projects = [
     status: 'Preview',
     icon: Truck,
     href: '/construction-materials'
+  },
+  {
+    title: 'Makawanpur Chamber of Commerce and Industry – Paschim Chhetra Samiti',
+    category: 'Business Systems',
+    description: 'A bilingual business registry and management system for businesses in Manahari Rural Municipality, including registration, renewals, tax clearance, memberships and reports.',
+    status: 'In development',
+    icon: Building2,
+    href: 'https://www.amarbartaula.com/mauhba'
   },
   {
     title: 'School Fee Reminder',
