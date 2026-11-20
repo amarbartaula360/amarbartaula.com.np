@@ -16,7 +16,7 @@ export async function PUT(request,{params}) {
     await client.query("UPDATE business_owners SET full_name_ne=$2 WHERE business_id=$1 AND is_primary=true",[id,body.owner_name||""]);
     await client.query("UPDATE business_contacts SET phone=$2,email=$3 WHERE business_id=$1 AND is_primary=true",[id,body.phone||null,body.email||null]);
     await client.query("UPDATE business_addresses SET ward_no=$2,tole=$3 WHERE business_id=$1 AND is_primary=true",[id,body.ward_no||null,body.tole||null]);
-    await client.query("INSERT INTO activity_logs (id,user_id,entity_type,entity_id,action,old_values,new_values) VALUES (nextval(pg_get_serial_sequence('activity_logs','id')),$1,'business',$2,'update',$3,$4)",[user.id,id,JSON.stringify(old.rows[0]),JSON.stringify(body)]);
+    await client.query("INSERT INTO activity_logs (user_id,entity_type,entity_id,action,old_values,new_values) VALUES ($1,'business',$2,'update',$3,$4)",[user.id,id,JSON.stringify(old.rows[0]),JSON.stringify(body)]);
     await client.query("COMMIT");return NextResponse.json({ok:true});
   }catch(e){await client.query("ROLLBACK").catch(()=>{});return NextResponse.json({error:e.message},{status:e.status||500});}finally{client.release();}
 }
